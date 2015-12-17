@@ -126,33 +126,51 @@ class ODEIntegrator(object):
 
 		Notes:
 		-----
-		====== ===== ============================= =================
+		====== ===== ============================= ==================
         Method Order Full name             		   Reference
-        ====== ===== ============================= =================
+        ====== ===== ============================= ==================
         FE     1     Forward Euler		           [Ise96]_, page 4 
         ET     2     Explicit trapezoidal or Heun  [Ise96]_, page 39
         ERK2   2     Ralston      				   [Ise96]_, page 39
         EM     2     Explicit midpoint 			   [Ise96]_, page 39
 		ERK3   3     Classical RK order 3		   [Ise96]_, page 40
 		NYS    3	 Nystrom 					   [Ise96]_, page 40
-        ERK4   4     Classical RK order 4		   [Ise96]_, page 40
-        ERK3/8 4     3/8-rule    				   
-        BE     1     Backward Euler     		   
-        IM     2     Implicit Midpoint rule 	   [Ise96]_, page 47 
+		SDIRK  3     Singly diagonal implicit	   [Hai00]_, page 207
+        ERK4   4     "The" Runge-Kutta method	   [Hai00]_, page 138
+        ERK3/8 4     3/8-rule    				   [Hai00]_, page 138 
+        BE     1     Backward Euler     		   [Hai00]_, page 205
+        IM     2     Implicit Midpoint rule 	   [Hai00]_, page 205 
         IT     2     Implicit trapezoidal    	   
         GL4    4     Gauss-Legendre    			   [Ise96]_, page 47
         GL6    6     Gauss-Legendre  			   [Ise96]_, page 47
+		KB8    8     Kuntzmann & Butcher           [Hai00]_, page 209
 		EERK12 2(1)  Heun-Euler
         EERK23 3(2)  Simple embedded RK pair	   [Ise96]_, page 84
 		EERK45 5(4)  Fehlberg                      [Ise96]_, page 84
-        ====== ===== ============================= =================
+        ====== ===== ============================= ==================
 
 		References:
 		----------
-		..  [Ise96] Arieh Iserles. A first course in the numerical analysis of
-					differential equations. Cambridge texts in applied mathe-
-					matics, 1996.
+		.. [Ise96] Arieh Iserles. A first course in the numerical analysis of
+				   differential equations. Cambridge texts in applied mathe-
+				   matics, 1996.
+
+		.. [Hai00] E. Hairer, S.P. Norsett and G Wanner. Solving ordinary 
+				   differential equations I: Nonstiff problems. Springer. 
+				   Second revised edition. 2000.
 		"""
+		#Constants of Kuntzmann & Butcher, order 8
+		omega1 = 1./8 - sqrt(30)/144 
+		omega2 = 1./2 * sqrt((15 + 2 * sqrt(30))/35)
+		omega3 = omega2 * (1./6 + sqrt(30)/24)
+		omega4 = omega2 * (1./21) + (5 * sqrt(30)/168)
+		omega5 = omega2 - 2 * omega3
+		omegaPrime1 = 1./8 + sqrt(30)/144 
+		omegaPrime2 = 1./2 * sqrt((15 + 2 * sqrt(30))/35)
+		omegaPrime3 = omegaPrime2 * (1./6 + sqrt(30)/24)
+		omegaPrime4 = omegaPrime2 * (1./21) + (5 * sqrt(30)/168)
+		omegaPrime5 = omegaPrime2 - 2 * omegaPrime3
+
 		butcherArray = {
 			'FE':(array([[0.]]),array([1.])),
 			'ET':(array([[0.,0.],[1.,0.]]), array([1./2,1./2])),
@@ -165,6 +183,13 @@ class ODEIntegrator(object):
 			'NYS':(
 					array([[0.,0.,0.],[2./3,0.,0.],[0.,2./3,0.]]),
 					array([1./4,3./8,3./8])
+				),
+			'SDIRK':(
+					array([
+							[(3-sqrt(3))/6, 0.],
+							[1 - (3 - sqrt(3))/3, (3 - sqrt(3))/6]
+						]),
+					array([1./2,1./2])
 				),
 			'ERK4':(
 				array([
@@ -212,6 +237,35 @@ class ODEIntegrator(object):
 					]),
 				array([5./18., 4./9., 5./18.]),
 				),
+			'KB8':(
+					array([
+							[
+								omega1, 
+								omegaPrime1 - omega3 + omegaPrime4, 
+								omegaPrime1 - omega3 - omegaPrime4,
+								omega1 - omega5
+							],
+							[
+								omega1 - omegaPrime3 + omega4,
+								omegaPrime1,
+								omegaPrime1 - omegaPrime5,
+								omega1 - omegaPrime3 - omega4
+							],
+							[	
+								omega1 + omegaPrime3 + omega4,
+								omegaPrime1 + omegaPrime5,
+								omegaPrime1,
+								omega1 + omegaPrime3 - omega4
+							],
+							[
+								omega1 + omega5,
+								omegaPrime1 + omega3 + omegaPrime4,
+								omegaPrime1 + omega3 - omegaPrime4,
+								omega1
+							]
+						]),
+					2 * array([omega1, omegaPrime1, omegaPrime1, omega1])
+				),
 			'EERK12':(
 					array([[0.,0.],[1.,0.]]),
 					(array([1.,0.]), array([1./2,1./2]))
@@ -222,19 +276,20 @@ class ODEIntegrator(object):
 				),
 			'EERK45':(
 				array([
-					[0, 0, 0, 0, 0,0],
-					[1./4, 0, 0, 0, 0, 0],
-					[3./32, 9./32, 0, 0, 0, 0],
-					[1932./2197, -7200./2197, 7296./2197, 0, 0, 0],
-					[439./216, -8, 3680./513, -845./4104, 0, 0],
-					[-8./27, 2, -3544./2565, 1859./4104, -11./40, 0.]]),
-				(array([25./216, 0, 1408./2565, 2197./4104, -1./5, 0.]),
+					[0., 0., 0., 0., 0., 0.],
+					[1./4, 0., 0., 0., 0., 0.],
+					[3./32, 9./32, 0., 0., 0., 0.],
+					[1932./2197, -7200./2197, 7296./2197, 0., 0., 0.],
+					[439./216, -8., 3680./513, -845./4104, 0., 0.],
+					[-8./27, 2., -3544./2565, 1859./4104, -11./40, 0.]]),
+				(array([25./216, 0., 1408./2565, 2197./4104, -1./5, 0.]),
 					array([
 							16./135, 
 							0., 
 							6656./12825, 
 							28561./56430, 
-							-9./50, 2./55
+							-9./50, 
+							2./55
 						])
 					)
 				)
@@ -260,11 +315,13 @@ class ODEIntegrator(object):
 				'NYS':ExplicitRungeKutta,
 				'ERK4':ExplicitRungeKutta,
 				'ERK3/8':ExplicitRungeKutta,
-				'BE':SemiImplicitRungeKutta,
-				'IM':SemiImplicitRungeKutta,
-				'IT':SemiImplicitRungeKutta,
+				'BE':DiagonalImplicitRungeKutta,
+				'IM':DiagonalImplicitRungeKutta,
+				'SDIRK':DiagonalImplicitRungeKutta,
+				'IT':DiagonalImplicitRungeKutta,
 				'GCM4':ImplicitRungeKutta,
 				'GCM6':ImplicitRungeKutta,
+				'KB8':ImplicitRungeKutta,
 				'EERK12':EmbeddedRungeKutta,
 				'EERK23':EmbeddedRungeKutta,
 				'EERK45':EmbeddedRungeKutta

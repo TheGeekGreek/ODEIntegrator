@@ -376,6 +376,7 @@ class ODEIntegrator(object):
 				return_steps = False,
 				flag = False, 
 				verbose = False,
+				*args,
 				**kwargs
 			):
 		"""
@@ -412,6 +413,7 @@ class ODEIntegrator(object):
 							tEnd,
 							number_of_steps,
 							verbose,
+							*args,
 							**kwargs
 						)
 		

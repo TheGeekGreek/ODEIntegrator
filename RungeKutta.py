@@ -42,7 +42,7 @@ class RungeKutta(object):
 		
 		return None
 
-	def integrate(self, tStart, tEnd, steps, verbose, **kwargs):
+	def integrate(self, tStart, tEnd, steps, verbose, *args, **kwargs):
 		if kwargs:
 			raise ValueError, 'No keyword-arguments allowed.'
 
@@ -51,7 +51,7 @@ class RungeKutta(object):
 		y[:, 0] = self.initialValues
 
 		for k in xrange(steps):
-			l = self._compute_increments(y[:,k], t[k], h)
+			l = self._compute_increments(y[:,k], t[k], h, *args)
 			y[:, k + 1] = y[:,k] + h * numpy.sum(l * self.RKWeights, axis = 1) 
 		return h, t, y	
 		

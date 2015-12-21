@@ -17,8 +17,8 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
 		RungeKutta.__init__(self, RKMatrix, RKWeights[0], function, initialValues)
 		self.RKWeights_tilde = RKWeights[1]
 		self.settings = {
-			'abstol':tile(array([1e-5]), self.initialValues.size),
-			'reltol':tile(array([1e-5]), self.initialValues.size),
+			'abstol':tile(array([1e-6]), self.initialValues.size),
+			'reltol':tile(array([1e-6]), self.initialValues.size),
 			'h_min':1e-20,
 			'h_max':1e+1,
 			'max_steps':int(1e+4)
@@ -54,7 +54,6 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
 			h0 = 1e-6
 		else:
 			h0 = 1e-2 * d0/d1
-
 		y1 = self.initialValues + h0 * approx
 		approx2 = self.function(tStart + h0, y1)
 		d2 = _norm(approx2 - approx, sc)/h0
@@ -66,8 +65,9 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
 		h = min(1e+2 * h0, h1)
 			
 		#Preventing the initial time-step from being too small
-		if h <= self.settings['h_min']:
-			h = self.settings['h_min']
+		#if h <= self.settings['h_min']:
+		#	h = self.settings['h_min']
+                
 
 		#Constants
 		n = self.initialValues.size
@@ -96,9 +96,9 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
 
 			for i in range(n):
 				factor = max(abs(y[i,-2]), abs(y[i,-1]))
-				sc = self.settings['abstol'][i] - factor * self.settings['reltol'][i]
+				sc = self.settings['abstol'][i] + factor * self.settings['reltol'][i]
 			error = _norm(y[:,-1] - yTilde[:,-1], sc)
-			print error
+			
 			#est = norm(y[:,-1] - z[:,-1])
 			#tol = max(self.settings['reltol'][0] * norm(y[:,-1]), self.settings['abstol'][0])
 			#h_new = h * max(.5, min(2. , (tol/est)**(1./5)))

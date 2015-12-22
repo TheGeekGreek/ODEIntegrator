@@ -16,7 +16,7 @@ from types import FunctionType
 
 #Wildcard import from own modules
 from ExplicitRungeKutta import *
-from SemiImplicitRungeKutta import *
+from DiagonalImplicitRungeKutta import *
 from ImplicitRungeKutta import *
 from EmbeddedRungeKutta import *
 

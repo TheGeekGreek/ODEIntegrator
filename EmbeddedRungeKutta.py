@@ -17,8 +17,8 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
 		RungeKutta.__init__(self, RKMatrix, RKWeights[0], function, initialValues)
 		self.RKWeights_tilde = RKWeights[1]
 		self.settings = {
-			'abstol':tile(array([1e-6]), self.initialValues.size),
-			'reltol':tile(array([1e-6]), self.initialValues.size),
+			'abstol':tile(array([1e-5]), self.initialValues.size),
+			'reltol':tile(array([1e-5]), self.initialValues.size),
 			'h_min':1e-20,
 			'h_max':1e+1,
 			'max_steps':int(1e+4)
@@ -86,7 +86,14 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
 		
 		#Main loop
 		while t < tEnd:
-			l = self._compute_increments(yTilde[:,-1], t, h)
+                        if timeSpan[-1] + h >= tEnd:
+                            h = tEnd - timeSpan[-1]
+                        elif h > self.settings['h_max'] or h < self.settings['h_min']:
+			    break
+                        else:
+                            pass
+			
+                        l = self._compute_increments(yTilde[:,-1], t, h)
 			order_pp = yTilde[:,-1] + h * numpy.sum(l * self.RKWeights_tilde, axis = 1)
 			yTilde = hstack((yTilde[:,-1].reshape((n,1)), order_pp.reshape((n,1))))
 			order_p = y[:,-1] + h * numpy.sum(l[:,:-1] * self.RKWeights[:-1], axis = 1)
@@ -97,21 +104,11 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
 			for i in range(n):
 				factor = max(abs(y[i,-2]), abs(y[i,-1]))
 				sc = self.settings['abstol'][i] + factor * self.settings['reltol'][i]
-			error = _norm(y[:,-1] - yTilde[:,-1], sc)
-			
-			#est = norm(y[:,-1] - z[:,-1])
-			#tol = max(self.settings['reltol'][0] * norm(y[:,-1]), self.settings['abstol'][0])
-			#h_new = h * max(.5, min(2. , (tol/est)**(1./5)))
+			error = _norm(y[:,-1] - yTilde[:,-1], sc)	
 			r = min(facmax, max(.5, fac * (1./error)**(1./5)))
-
 			h_new = h * r			
-	
-			if h > self.settings['h_max'] or h < self.settings['h_min']:
-				timeSpan = hstack((timeSpan, array(t)))
-				break
-
-			elif error <= 1.:
-			#elif est < tol:
+    
+			if error <= 1.:
 				t += h
 				timeSpan = hstack((timeSpan, array(t)))
 				h = h_new
@@ -122,13 +119,6 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
 				y = y[:,:-1]
 				h = h_new
 				facmax = 1.
-
-		#Calculating the last step
-		dt = tEnd - timeSpan[-1]
-		l = self._compute_increments(y[:,-2], timeSpan[-2], dt)
-		order_pp = y[:,-1] + dt * numpy.sum(l * self.RKWeights_tilde, axis = 1)
-		y = hstack((y[:,:-1], order_pp.reshape((n,1))))
-		timeSpan = hstack((timeSpan[:-1], array([tEnd])))
 
 		if verbose:
 			#print 'The upper error bound was: %.10f'%settings['eps_max']

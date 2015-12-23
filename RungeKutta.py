@@ -31,7 +31,7 @@ class RungeKutta(object):
 		self.initialValues = initialValues
 		self.calculate_RK_nodes()
 		
-		return None
+		return None	
 	
 	def calculate_RK_nodes(self):
 		nu = self.RKMatrix.shape[0]

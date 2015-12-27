@@ -9,16 +9,15 @@ at University of Zurich, Raemistrasse 71, 8006 Zurich.
 from RungeKutta import *
 
 class ExplicitRungeKutta(RungeKutta):
-	def _compute_increments(self, y, t, h, *args):
-		nu = self.RKMatrix.shape[0]
-		increments = zeros((self.initialValues.size, nu))		
+	def _compute_increments(self, y, t, h):
+		nu = self.rk_matrix.shape[0]
+		increments = zeros((self.initial_value.size, nu))		
 		
 		for i in xrange(nu):
-			increment = numpy.sum(self.RKMatrix[i,0:i] * increments[:,0:i], axis = 1)
+			increment = dot(increments[:,0:i], self.rk_matrix[i,0:i])
 			increments[:,i] = self.function(
-									t + h * self.RKNodes[i], 
-									y + h * increment,
-									*args
+									t + h * self.rk_nodes[i], 
+									y + h * increment
 								)
 		
 		return increments

@@ -13,16 +13,16 @@ from RungeKutta import *
 
 class ImplicitRungeKutta(RungeKutta):
 	def _compute_increments(self, y, t, h):
-		nu = self.RKMatrix.shape[0]
-		n = self.initialValues.size
+		nu = self.rk_matrix.shape[0]
+		n = self.initial_value.size
 
 		def func(x):
 			stacked = zeros((n * nu))
 			for i in range(nu):
-				pre_i = numpy.sum(self.RKMatrix[i,0:i] * x.reshape((nu, n)).T[:,0:i], axis = 1)
-				post_i = numpy.sum(self.RKMatrix[i,i+1:nu] * x.reshape((nu, n)).T[:,i+1:nu], axis = 1)
-				arg1 = t + h * self.RKNodes[i]
-				arg2 = y + h * (pre_i + post_i + self.RKMatrix[i,i] * x[n * i:n * (i + 1)])
+				pre_i = dot(x.reshape((nu, n)).T[:,0:i], self.rk_matrix[i,0:i])
+				post_i = dot(x.reshape((nu, n)).T[:,i+1:nu], self.rk_matrix[i,i+1:nu])
+				arg1 = t + h * self.rk_nodes[i]
+				arg2 = y + h * (pre_i + post_i + self.rk_matrix[i,i] * x[n * i:n * (i + 1)])
 				stacked[n * i:n * (i + 1)] = self.function(arg1, arg2) - x[n * i:n * (i + 1)]
 			return stacked
 

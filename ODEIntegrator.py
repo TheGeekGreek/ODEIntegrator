@@ -10,7 +10,7 @@ Yannis Baehni - yannis.baehni@uzh.ch
 
 at University of Zurich, Raemistrasse 71, 8006 Zurich.
 """
-from numpy import array, ndarray, sqrt
+from numpy import array, ndarray, sqrt, finfo, tile
 from time import time
 from types import FunctionType
 
@@ -55,59 +55,75 @@ class ODEIntegrator(object):
 	...     values[1] = -sin(y[0])
 	...     return values
 	... 
-	>>> initialValues = array([-pi/3,0])
-	>>> tStart = 0.
-	>>> tEnd = 10.
-	>>> number_of_steps = 1e+3
-	>>> instance = ODEIntegrator(right_hand_side, initialValues)
-	>>> instance.build('EERK45')
+	>>> initial_value = array([-pi/3,0])
+	>>> tStart = 0
+	>>> tEnd = 10
+	>>> instance = ODEIntegrator(right_hand_side, tStart, initial_value)
+	Runge-Kutta method EERK45 successfully built.
 	>>> h, t, y = instance.integrate(
-	...     tStart,
 	...     tEnd,
-	...     number_of_steps,
 	...     return_steps = True
 	... )
 	>>> print h
-	[ 0.02        0.04        0.08        0.16        0.176       0.1936
-	  0.21296     0.234256    0.2576816   0.28344976  0.31179474  0.34297421
-	  0.37727163  0.41499879  0.45649867  0.50214854  0.55236339  0.60759973
-	  0.66835971  0.73519568  0.80871525  0.88958677  0.97854545  0.5382
-	  0.59202     0.651222  ]
+	[ 0.02770747  0.05541494  0.11082988  0.22165976  0.27230999  0.28052346
+	  0.27419695  0.24301475  0.2163588   0.200596    0.20012012  0.21079332
+	  0.22729721  0.25175401  0.27977788  0.28172309  0.26824431  0.26540465
+	  0.27527766  0.28159341  0.26379881  0.23171046  0.20941502  0.19673453
+	  0.20345275  0.21603736  0.23521117  0.26258503  0.28467372  0.27689268
+	  0.26364826  0.26899637  0.27857908  0.27905196  0.25179636  0.22226502
+	  0.20393565  0.19810893  0.20745327  0.22220389  0.24437379  0.27333594
+	  0.26114229]
 	>>> print t
-	[  0.           0.02         0.06         0.14         0.3          0.46
-   	   0.636        0.8296       1.04256      1.276816     1.5344976
-   	   1.81794736   2.1297421    2.47271631   2.84998794   3.26498673
-   	   3.7214854    4.22363394   4.77599734   5.38359707   6.05195678
-   	   6.78715246   7.5958677    8.48545447   8.9747272    9.51292719
-	  10.10494719  -0.10494719]
+	[  0.           0.02770747   0.08312241   0.19395229   0.41561205
+	   0.68792204   0.9684455    1.24264245   1.48565721   1.702016     1.902612
+	   2.10273211   2.31352544   2.54082265   2.79257666   3.07235453
+	   3.35407762   3.62232193   3.88772657   4.16300424   4.44459764
+	   4.70839645   4.94010691   5.14952193   5.34625645   5.54970921
+	   5.76574657   6.00095774   6.26354278   6.54821649   6.82510918
+	   7.08875744   7.35775381   7.63633288   7.91538484   8.16718121
+	   8.38944623   8.59338189   8.79149082   8.99894408   9.22114798
+	   9.46552177   9.73885771  10.        ]
 	>>> print y
-	[[-1.04719755 -1.04715425 -1.04680785 -1.04507622 -1.03746393 -1.00575377
-	  -0.94595912 -0.85128141 -0.71479064 -0.53069925 -0.29673679 -0.0178017
-	   0.28979344  0.59553947  0.85581901  1.01878781  1.02991575  0.83839432
-	   0.4181342  -0.17544336 -0.75073425 -1.04240834 -0.83802009 -0.09305638
-	   0.38613243  0.8092958   1.03680803  1.01761073]
-	 [ 0.          0.00866018  0.02597881  0.060597    0.12965915  0.26627716
-	   0.4122263   0.56395023  0.71446558  0.85141472  0.95529712  0.99984319
-	   0.95739869  0.80975267  0.55785857  0.2209144  -0.17261211 -0.5808086
-	  -0.90980891 -0.9846423  -0.68004467 -0.0914493   0.58155996  0.99620283
-	   0.92404069  0.61732608  0.13790598  0.22776722]]
+	[[-1.04719755 -1.04686514 -1.04420658 -1.03093436 -0.97295233 -0.84656229
+	  -0.65872635 -0.42888388 -0.19876298  0.01626545  0.21517053  0.40510363
+	   0.58807394  0.75772866  0.90418737  1.00859586  1.04706807  1.02003023
+	   0.93313189  0.78355773  0.57568896  0.34186411  0.11687685 -0.09214042
+	  -0.28501638 -0.47302027 -0.65198673 -0.81461813 -0.94864149 -1.03079846
+	  -1.04428336 -0.9956984  -0.88625884 -0.71424335 -0.49139217 -0.25861052
+	  -0.03929693  0.16388796  0.3548873   0.54025377  0.71422566  0.86819875
+	   0.98646648  1.04152938]
+	 [ 0.          0.02399384  0.07194461  0.16743713  0.35457516  0.57019657
+	   0.76259136  0.90491009  0.98011491  0.99986897  0.97666923  0.91549225
+	   0.81487697  0.67290479  0.48646879  0.25710238  0.01508841 -0.21606491
+	  -0.43662892 -0.64561445 -0.82318856 -0.94035531 -0.99315725 -0.99575223
+	  -0.95881211 -0.88340221 -0.76796257 -0.61016324 -0.40691752 -0.16815246
+	   0.07106686  0.29638046  0.51442899  0.7149728   0.873706    0.96617899
+	   0.9992326   0.98651455  0.93561832  0.84567535  0.71499078  0.54075401
+	   0.32139002  0.09905591]]
 	"""
-	def __init__(self, function, initialValues = array([])):
+	def __init__(self, function, tstart, initial_value):
 		"""Initializer of an instance of the class ODEIntegrator."""
 		if isinstance(function, FunctionType):
 			self.function = function
 		else:
 			raise ValueError, 'Expected an object of type function' \
 					' got %s instead.'%type(function)
-		
-		if isinstance(initialValues, ndarray):
-			self.initialValues = initialValues
+
+		try:
+			self.tstart = float(tstart)
+		except Exception as e:
+			raise ValueError, str(e) + '. Starting time has to be a' \
+					' float or at least convertible to one.'
+
+		if isinstance(initial_value, ndarray):
+			self.initial_value = initial_value
 		else:
 			raise ValueError, 'Expected an object of type numpy ' \
-					' ndarray got %s instead.'%type(initial)
+					' ndarray got %s instead.'%type(initial_value)
+				
 		return None	
 
-	def _get_RK_tableaux(self, method):
+	def _get_rk_tableaux(self, method):
 		"""
 		Returns the RK tableaux of a certain method.	
 
@@ -127,22 +143,22 @@ class ODEIntegrator(object):
 		Notes:
 		-----
 		====== ===== ============================= ==================
-        Method Order Full name             		   Reference
+        Method Order Full name					   Reference
         ====== ===== ============================= ==================
-        FE     1     Forward Euler		           [Ise96]_, page 4 
+        FE     1     Forward Euler				   [Ise96]_, page 4 
         ET     2     Explicit trapezoidal or Heun  [Ise96]_, page 39
-        ERK2   2     Ralston      				   [Ise96]_, page 39
-        EM     2     Explicit midpoint 			   [Ise96]_, page 39
+        ERK2   2     Ralston					   [Ise96]_, page 39
+        EM     2     Explicit midpoint			   [Ise96]_, page 39
 		ERK3   3     Classical RK order 3		   [Ise96]_, page 40
-		NYS    3	 Nystrom 					   [Ise96]_, page 40
+		NYS    3	 Nystrom					   [Ise96]_, page 40
 		SDIRK  3     Singly diagonal implicit	   [Hai00]_, page 207
         ERK4   4     "The" Runge-Kutta method	   [Hai00]_, page 138
-        ERK3/8 4     3/8-rule    				   [Hai00]_, page 138 
-        BE     1     Backward Euler     		   [Hai00]_, page 205
-        IM     2     Implicit Midpoint rule 	   [Hai00]_, page 205 
-        IT     2     Implicit trapezoidal    	   
-        GL4    4     Gauss-Legendre    			   [Ise96]_, page 47
-        GL6    6     Gauss-Legendre  			   [Ise96]_, page 47
+        ERK3/8 4     3/8-rule					   [Hai00]_, page 138 
+        BE     1     Backward Euler				   [Hai00]_, page 205
+        IM     2     Implicit Midpoint rule		   [Hai00]_, page 205 
+        IT     2     Implicit trapezoidal		   
+        GL4    4     Gauss-Legendre				   [Ise96]_, page 47
+        GL6    6     Gauss-Legendre				   [Ise96]_, page 47
 		KB8    8     Kuntzmann & Butcher           [Hai00]_, page 209
 		EERK12 2(1)  Heun-Euler
         EERK23 3(2)  Simple embedded RK pair	   [Ise96]_, page 84
@@ -226,11 +242,11 @@ class ODEIntegrator(object):
 							2.0/9 - sqrt(15)/15.,
 							5.0/36. - sqrt(15)/30.
 						],
-              			[ 
+						[ 
 							5.0/36.0 + sqrt(15)/24., 
 							2.0/9, 5.0/36.0 - sqrt(15)/24.
 						],
-             			[ 
+						[ 
 							5./36. + sqrt(15)/30.,
 							2./9 + sqrt(15)/15., 5.0/36.
 						]	
@@ -334,7 +350,7 @@ class ODEIntegrator(object):
 		"""Changes the attribute function of strategy and context."""
 		self.function = function
 		try:
-			self.rungeKutta.function = function
+			self.runge_kutta.function = function
 		except AttributeError:
 			pass
 
@@ -342,90 +358,109 @@ class ODEIntegrator(object):
 
 	def change_initial_values(self, initialValues):
 		"""Changes the attribute initialValues of strategy and context."""
-		self.initialValues = initialValues
+		self.initial_value = initial_value
 		try:
-			self.rungeKutta.initialValues = initialValues
+			self.runge_kutta.initial_value = initial_value
 		except AttributeError:
 			pass
 
 		return None
 
-	def build(self, method, verbose = False):
+	def _build(self, method):
 		"""
 		
 		"""
-		A, b = self._get_RK_tableaux(method)
-		self.rungeKutta = self._get_method(method)(
-				A, 
-				b, 
+		rk_matrix, rk_weights = self._get_rk_tableaux(method)
+		self.runge_kutta = self._get_method(method)(
+				rk_matrix, 
+				rk_weights, 
 				self.function, 
-				self.initialValues
+				self.initial_value
 			)
 
-		if verbose:
-			print 'Runge-Kutta method %s successfully built.'%method
-			print 'The RK tableaux is given by:'
-			print self.rungeKutta
+		print 'Runge-Kutta method %s successfully built.'%method
 
 		return None
-	
-	def integrate(
-				self, 
-				tStart, 
-				tEnd, 
-				number_of_steps,
-				return_steps = False,
-				flag = False, 
-				verbose = False,
-				*args,
-				**kwargs
-			):
-		"""
 
-		"""
+	def _process_kwargs(self, tend, **kwargs):
+		settings = {
+				'method':'EERK45',
+				'steps':None, 
+				'verbose':False,
+				'flag':False,
+				'return_steps':False,
+				'abstol':tile(array([1e-6]), self.initial_value.size),
+				'reltol':tile(array([1e-6]), self.initial_value.size),
+				'h_min':finfo(float).eps,
+				'h_max':float(tend - self.tstart),
+				'max_steps':1e+4
+			}
 		
-		try:
-			tStart = float(tStart)
-			tEnd = float(tEnd)
-		except Exception as e:
-			raise ValueError, str(e) + '. Initial time and end time must be' \
-					' real numbers.'
+		if kwargs:
+			for key in kwargs:
+				if key not in settings:
+					raise ValueError, 'Not supported keyword-argument' \
+							' %s provided.'%(key)
 
+			if 'method' in kwargs and kwargs['method'] != 'EERK45':
+				if 'steps' not in kwargs:
+					raise ValueError, 'RK method %s is non-adaptive and' \
+							' therefore requires the parameter steps for' \
+							' the number of steps.'%kwargs['method']
+				else:
+					for key in kwargs:
+						settings[key] = kwargs[key]
+			else:
+				if 'steps' in kwargs:
+					raise ValueError, 'RK method EERK45 is adaptive and' \
+							' does therefore not require any number of' \
+							' steps as parameter.'
+				else:
+					for key in kwargs:
+						settings[key] = kwargs[key]
+			
+		self._build(settings['method'])
+
+		return settings
+	
+	def integrate(self, tend, **kwargs):
+		"""
+
+		"""
+		settings = self._process_kwargs(tend, **kwargs)
+	
 		try:
-			number_of_steps = int(number_of_steps)
+			tend = float(tend)
 		except Exception as e:
-			raise ValueError, str(e) + '. The number of steps must be a ' \
-					' natural number or at least be convertible to a' \
-					' natural number.'
+			raise ValueError, str(e) + '. End time must be a float or' \
+					' at least be convirtible to one.'
 		
 		#Switch tStart and tEnd in case of tEnd < tStart
-		if tStart > tEnd:
-			tmp = tStart
-			tStart = tEnd
-			tEnd = tStart
-		elif tStart == tEnd:
+		if self.tstart > tend:
+			tmp = self.tstart
+			self.tstart = tend
+			tend = tmp
+		elif self.tstart == tend:
 			raise ValueError, 'Initial time and end time have to be' \
 					' distinct.'
-
+		
+		#Starting time measurement of integration process
 		t0 = time()
 
-		h, t, y = self.rungeKutta.integrate(
-							tStart,
-							tEnd,
-							number_of_steps,
-							verbose,
-							*args,
-							**kwargs
+		h, t, y = self.runge_kutta.integrate(
+							self.tstart,
+							tend,
+							**settings
 						)
 		
-		if verbose:
-			print 'RK method was successfull in %d seconds.' %(time() - t0)
+		if settings['verbose']:
+			print 'Integration process took %f seconds.' %(time() - t0)
 		
-		if flag:
+		if settings['flag']:
 			return t[-1], y[:,-1]
-		elif return_steps:
+		elif settings['return_steps']:
 			return h, t, y
-		elif return_steps and flag:
+		elif settings['return_steps'] and settings['flag']:
 			return h, t[-1], y[:,-1]
 		else:
 			return t, y

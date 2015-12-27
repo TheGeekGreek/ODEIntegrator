@@ -6,11 +6,11 @@ Yannis Baehni - yannis.baehni@uzh.ch
 
 at University of Zurich, Raemistrasse 71, 8006 Zurich.
 """
-import numpy
-from numpy import shape, sign, zeros, linspace, hstack, array
+from sys import stdout
+from numpy import dot, shape, sign, zeros, linspace, hstack, array
 
 class RungeKutta(object):
-	def __init__(self, RKMatrix, RKWeights, function, initialValues):
+	def __init__(self, rk_matrix, rk_weights, function, initial_value):
 		"""
 		Initializer of an instance of the class RungeKutta.
 
@@ -25,66 +25,54 @@ class RungeKutta(object):
 					matics, 1996.
 
 		"""
-		self.RKMatrix = RKMatrix
-		self.RKWeights = RKWeights
+		self.rk_matrix = rk_matrix
+		self.rk_weights = rk_weights
 		self.function = function
-		self.initialValues = initialValues
-		self.calculate_RK_nodes()
-		
-		return None	
-	
-	def calculate_RK_nodes(self):
-		nu = self.RKMatrix.shape[0]
-		RKNodes = zeros(nu)
-		for j in xrange(nu):
-			RKNodes[j] = sum(self.RKMatrix[j,0:nu])
-		self.RKNodes = RKNodes
+		self.initial_value = initial_value
+		self._calculate_rk_nodes()
 		
 		return None
-
-	def integrate(self, tStart, tEnd, steps, verbose, *args, **kwargs):
-		if kwargs:
-			raise ValueError, 'No keyword-arguments allowed.'
-
-		[t, h] = linspace(tStart, tEnd, steps + 1, retstep = True)
-		y = zeros((self.initialValues.size, t.size))
-		y[:, 0] = self.initialValues
-
-		for k in xrange(steps):
-			l = self._compute_increments(y[:,k], t[k], h, *args)
-			y[:, k + 1] = y[:,k] + h * numpy.sum(l * self.RKWeights, axis = 1) 
-		return h, t, y	
+	
+	def _calculate_rk_nodes(self):
+		nu = self.rk_matrix.shape[0]
+		rk_nodes = zeros(nu)
+		for j in xrange(nu):
+			rk_nodes[j] = sum(self.rk_matrix[j,0:nu])
+		self.rk_nodes = rk_nodes
 		
+		return None
+		
+	def integrate(self, tstart, tend, **settings):
+		t, h = linspace(tstart, tend, settings['steps'] + 1, retstep = True)
+		y = zeros((self.initial_value.size, t.size))
+		y[:, 0] = self.initial_value
 
-	def __str__(self):
+		for k in xrange(settings['steps']):
+			increments = self._compute_increments(y[:,k], t[k], h)
+			y[:, k + 1] = y[:,k] + h * dot(increments, self.rk_weights)
+			self._progress(t[k] - tstart, tend - tstart)
+
+		if settings['verbose']:
+			print 'RK method was successfull.'
+		
+		return h, t, y	
+	
+	def _progress(self, count, total):
 		"""
-		Method for printing an instance of the class RungeKutta.
+		Prints the progress of integration on console.
 
-		Prints the butcher tableau in an fashionable way. This means that
-
-									c|A
-									---
-									 |b
-
-		is printed where A corresponds to the attribute RKMatrix, c to 
-		RKNodes and b to RKWeights.
+		An ASCII-progress bar on console. This is slightly modified code 
+		taken from https://gist.github.com/vladignatyev/06860ec2040cb497f0f3. 
+		With a big thank to Vladimir Ignatyev who kindly allowed me to use his
+		code.
 		"""
-		string = ''
-		for i in xrange(len(self.RKNodes)):
-			string += '+%.3f'%self.RKNodes[i] + ' | '
-			for element2 in self.RKMatrix[i]:
-				if element2 >= 0:
-					string += '+%.3f '%element2
-				else:
-					string += '%.3f '%element2
-			string += '\n'
-		length = len(string.split('\n')[0])
-		string += length * '-' + '\n'
-		string += '       | '
-		for element in self.RKWeights:
-			if element >= 0:
-				string += '+%.3f '%element
-			else:
-				string += '%.3f '%element
-		string += '\n'
-		return string
+		bar_len = 30
+		filled_len = int(round(bar_len * count / float(total)))
+
+		percents = round(100.0 * count / float(total), 3)
+		bar = '=' * filled_len + '-' * (bar_len - filled_len)
+
+		stdout.write('\r[%s] %s%s ' % (bar, percents, '%'))
+		stdout.flush()
+
+		return None

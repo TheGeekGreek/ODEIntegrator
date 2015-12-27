@@ -11,7 +11,7 @@ from scipy.optimize import fsolve
 from RungeKutta import *
 
 class DiagonalImplicitRungeKutta(RungeKutta):	
-	def _compute_increments(self, y, t, h):
+	def _compute_increments(self, y, t, h, *args):
 		nu = self.rk_matrix.shape[0]
 		increments = zeros((self.initial_value.size,nu)) 
 		
@@ -21,7 +21,7 @@ class DiagonalImplicitRungeKutta(RungeKutta):
 			def func(x, increment):
 				arg1 = t + h * self.rk_nodes[i]
 				arg2 = y + h * increment + h * self.rk_matrix[i,i] * x
-				return self.function(arg1, arg2)  - x
+				return self.function(arg1, arg2, *args)  - x
 				
 			increments[:,i] = fsolve(func, y, increment)
 		return increments

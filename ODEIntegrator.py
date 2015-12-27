@@ -385,7 +385,8 @@ class ODEIntegrator(object):
 	def _process_kwargs(self, tend, **kwargs):
 		settings = {
 				'method':'EERK45',
-				'steps':None, 
+				'steps':None,
+				'params':(),
 				'verbose':False,
 				'flag':False,
 				'return_steps':False,

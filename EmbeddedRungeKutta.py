@@ -26,7 +26,7 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
                 
         return None
 
-    def _calculate_initial_step(self, tstart, abstol, reltol):
+    def _calculate_initial_step(self, tstart, abstol, reltol, params):
         """
         Calculates an optimal starting step size.
 
@@ -42,7 +42,7 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
         """
         n = self.initial_value.size
         power = self.rk_matrix.shape[0] - 1
-        evaluation1 = self.function(tstart, self.initial_value)
+        evaluation1 = self.function(tstart, self.initial_value, *params)
          
         scaling = array(abstol)
             
@@ -58,7 +58,7 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
             h0 = 1e-2 * (d0/d1)
 
         y1 = self.initial_value + h0 * evaluation1
-        evaluation2 = self.function(self.initial_value + h0, y1)
+        evaluation2 = self.function(self.initial_value + h0, y1, *params)
         d2 = sqrt(1./n * sum(((evaluation2 - evaluation1)/scaling)**2))/h0
             
         if max(d1,d2) <= 1e-15:
@@ -88,7 +88,8 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
         h = self._calculate_initial_step(
                     tstart, 
                     settings['abstol'], 
-                    settings['reltol']
+                    settings['reltol'],
+                    settings['params']
                 )
 
         #Constants
@@ -133,7 +134,7 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
                 warn(message, RuntimeWarning)
                 break
             
-            increments = self._compute_increments(y0, t, h) 
+            increments = self._compute_increments(y0, t, h, *settings['params']) 
             y1 = y0 + h * dot(increments, self.rk_weights)
             y_hat1 = y0 + h * dot(increments, self.rk_weights_hat)
                         

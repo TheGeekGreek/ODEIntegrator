@@ -48,9 +48,11 @@ class RungeKutta(object):
 		y[:, 0] = self.initial_value
 
 		for k in xrange(settings['steps']):
-			increments = self._compute_increments(y[:,k], t[k], h)
+			increments = self._compute_increments(y[:,k], t[k], h, *settings['params'])
 			y[:, k + 1] = y[:,k] + h * dot(increments, self.rk_weights)
-			self._progress(t[k] - tstart, tend - tstart)
+
+			if settings['verbose']:
+				self._progress(t[k + 1] - tstart, tend - tstart)
 
 		if settings['verbose']:
 			print 'RK method was successfull.'

@@ -10,6 +10,7 @@ from RungeKutta import *
 
 class ExplicitRungeKutta(RungeKutta):
 	def _compute_increments(self, y, t, h, *args):
+		"""Computes the increments of one RK step."""
 		nu = self.rk_matrix.shape[0]
 		increments = zeros((self.initial_value.size, nu))		
 		

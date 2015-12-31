@@ -6,13 +6,14 @@ Yannis Baehni - yannis.baehni@uzh.ch
 
 at University of Zurich, Raemistrasse 71, 8006 Zurich.
 """
-from scipy.optimize import fsolve
+from scipy.optimize import newton_krylov
 from numpy import tile
 
 from RungeKutta import *
 
 class ImplicitRungeKutta(RungeKutta):
 	def _compute_increments(self, y, t, h, *args):
+		"""Computes the increments of one RK step."""
 		nu = self.rk_matrix.shape[0]
 		n = self.initial_value.size
 
@@ -26,4 +27,4 @@ class ImplicitRungeKutta(RungeKutta):
 				stacked[n * i:n * (i + 1)] = self.function(arg1, arg2, *args) - x[n * i:n * (i + 1)]
 			return stacked
 
-		return fsolve(func, tile(y, nu)).reshape((nu, n)).T
+		return newton_krylov(func, tile(y, nu), method = 'gmres').reshape((nu, n)).T

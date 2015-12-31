@@ -10,10 +10,25 @@ from sys import stdout
 from numpy import dot, shape, sign, zeros, linspace, hstack, array
 
 class RungeKutta(object):
-	def __init__(self, rk_matrix, rk_weights, function, initial_value):
+	def __init__(
+			self, 
+			rk_matrix, 
+			rk_weights, 
+			function, 
+			initial_value, 
+			settings
+		):
 		"""
 		Initializer of an instance of the class RungeKutta.
 
+		Parameters:
+		----------
+		rk_matrix : numpy.ndarray
+				Matrix provided by the corresponding Butcher-tableau.
+
+		rk_weights : numpy.ndarray
+				Weights provided by the corresponding Butcher-tableau.
+		
 		Notes:
 		-----
 		The naming conventions follow [Ise96]_, page 38.
@@ -29,11 +44,16 @@ class RungeKutta(object):
 		self.rk_weights = rk_weights
 		self.function = function
 		self.initial_value = initial_value
+		self.settings = settings
 		self._calculate_rk_nodes()
 		
 		return None
 	
 	def _calculate_rk_nodes(self):
+		"""
+		Calculates the nodes from a given RK matrix according to the formula
+		c_i = \sum\limits_{j = 1}^\nu a_{ij} for i = 1,...,\nu.
+		"""
 		nu = self.rk_matrix.shape[0]
 		rk_nodes = zeros(nu)
 		for j in xrange(nu):
@@ -42,19 +62,20 @@ class RungeKutta(object):
 		
 		return None
 		
-	def integrate(self, tstart, tend, **settings):
-		t, h = linspace(tstart, tend, settings['steps'] + 1, retstep = True)
+	def integrate(self, tstart, tend):
+		"""Integrates from tstart to tend."""
+		t, h = linspace(tstart, tend, self.settings['steps'] + 1, retstep = True)
 		y = zeros((self.initial_value.size, t.size))
 		y[:, 0] = self.initial_value
 
-		for k in xrange(settings['steps']):
-			increments = self._compute_increments(y[:,k], t[k], h, *settings['params'])
+		for k in range(int(self.settings['steps'])):
+			increments = self._compute_increments(y[:,k], t[k], h, *self.settings['params'])
 			y[:, k + 1] = y[:,k] + h * dot(increments, self.rk_weights)
 
-			if settings['verbose']:
+			if self.settings['verbose']:
 				self._progress(t[k + 1] - tstart, tend - tstart)
 
-		if settings['verbose']:
+		if self.settings['verbose']:
 			print 'RK method was successfull.'
 		
 		return h, t, y	
@@ -74,7 +95,7 @@ class RungeKutta(object):
 		percents = round(100.0 * count / float(total), 3)
 		bar = '=' * filled_len + '-' * (bar_len - filled_len)
 
-		stdout.write('\r[%s] %s%s ' % (bar, percents, '%'))
+		stdout.write('\r[%s] %s%s '%(bar, percents, '%'))
 		stdout.flush()
 
 		return None

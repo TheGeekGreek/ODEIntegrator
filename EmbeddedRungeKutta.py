@@ -13,15 +13,24 @@ from warnings import warn
 from ExplicitRungeKutta import *
 
 class EmbeddedRungeKutta(ExplicitRungeKutta):
-    def __init__(self,  rk_matrix, rk_weights, function, initial_value):
+    def __init__(
+            self,  
+            rk_matrix, 
+            rk_weights, 
+            function, 
+            initial_value, 
+            settings
+        ):
         """Initializer of an instance of the class EmbeddedRungeKutta"""
         RungeKutta.__init__(
                 self, 
                 rk_matrix,
                 rk_weights[0],
                 function,
-                initial_value
+                initial_value,
+                settings
             )
+
         self.rk_weights_hat = rk_weights[1]
                 
         return None
@@ -68,7 +77,7 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
 
         return min(1e+2 * h0, h1)
 
-    def integrate(self, tstart, tend, **settings):
+    def integrate(self, tstart, tend):
         """
         Integrating method for an embedded RK method.
                 
@@ -87,9 +96,9 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
         """
         h = self._calculate_initial_step(
                     tstart, 
-                    settings['abstol'], 
-                    settings['reltol'],
-                    settings['params']
+                    self.settings['abstol'], 
+                    self.settings['reltol'],
+                    self.settings['params']
                 )
 
         #Constants
@@ -113,17 +122,14 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
             if t + h >= tend:
                 h = tend - t
                 successfull = True
-
-            elif h > settings['h_max'] or h < settings['h_min']:
-                message = 'Solving has not been successful. The iterative' \
-                        ' integration loop exited at time t = %s before the' \
-                        ' endpoint tEnd = %s was reached. Try to set the' \
+                 
+            elif h > self.settings['h_max'] or h < self.settings['h_min']:
+                message = 'Solving might not be successful. Try to set the' \
                         ' setting for maximal and minimal stepsize manually' \
-                        ' by using **kwargs in integration.'%(t,tend)
+                        ' by using **kwargs in integration.'
                 warn(message, Warning)
-                break
 
-            elif len(time_increments) > settings['max_steps']:
+            elif len(time_increments) > self.settings['max_steps']:
                 message = 'Solving has not been successful. The iterative' \
                         ' integration loop exited at time t = %s before the' \
                         ' endpoint tEnd = %s was reached. Try to set the' \
@@ -131,18 +137,18 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
                         ' **kwargs in integration. Changing the maximal' \
                         ' stepsize can drastically increase the runtime' \
                         ' behaviour of the algorithm.'%(t,tend)
-                warn(message, RuntimeWarning)
+                print message
                 break
             
-            increments = self._compute_increments(y0, t, h, *settings['params']) 
+            increments = self._compute_increments(y0, t, h, *self.settings['params']) 
             y1 = y0 + h * dot(increments, self.rk_weights)
             y_hat1 = y0 + h * dot(increments, self.rk_weights_hat)
                         
-            scaling = array(settings['abstol'])
+            scaling = array(self.settings['abstol'])
                         
             for i in range(n):
                 factor = max(abs(y0[i]), abs(y1[i])) 
-                scaling[i] += factor * settings['reltol'][i]
+                scaling[i] += factor * self.settings['reltol'][i]
 
             error = sqrt(1./n * sum(((y1 - y_hat1)/scaling)**2))
             
@@ -165,7 +171,7 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
                 y.append(y0)
                 time.append(t)
                 
-                if settings['verbose']:
+                if self.settings['verbose']:
                     self._progress(t - tstart, tend - tstart)
 
             else:
@@ -173,13 +179,13 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
                 h = h_new
                 facmax = 1.
        
-        if settings['verbose']:
+        if self.settings['verbose']:
             if successfull:
                 print 'Stepsize control algorithm was successfull.'
             else:
                 print 'Stepsize control algorithm was not successfull.'
-            print 'The largest possible step was: %s'%settings['h_max']
-            print 'The smallest possible step was: %s'%settings['h_min']
+            print 'The largest possible step was: %s'%self.settings['h_max']
+            print 'The smallest possible step was: %s'%self.settings['h_min']
             print 'Number of steps: %d'%(len(time_increments))
             print 'Number of function calls: %d'%(6 * (len(time) - 1))
             print 'Maximal stepsize achieved in integration: %s'%max(time_increments)

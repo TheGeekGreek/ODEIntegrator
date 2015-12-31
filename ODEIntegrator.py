@@ -1,8 +1,8 @@
 """
-ODEIntegrator - A class for integrating systems of first order explicite 
-ordinary differential equations using various Runge Kutta methods. 
-Implemented are explicite, semi-implicite, implicite and embedded
-methods up to the order five.
+ODEIntegrator - A class for integrating systems of first order explicit 
+nonstiff ordinary differential equations using various Runge Kutta 
+methods. Implemented are explicit, semi-implicit, implicit and 
+embedded methods up to the order eight.
 
 Author:
 -------
@@ -34,16 +34,19 @@ class ODEIntegrator(object):
 
 	Solve a system of first order ODEs of the form y'(x) = f(x,y(x))
 	where f is in C(U;R^n) and U is a subset of R^{n+1} with n in 
-	N_{>0} and a given Cauchy-problem of the form y(xStart) = 
-	y_0 in R^n on the interval [xStart, xEnd] in R.
+	N_{>0} and a given Cauchy-problem of the form y(xstart) = 
+	y_0 in R^n on the interval [xstart, xend] in R.
 
 	Attributes:
 	----------
 	function : function
 			The function f given in y'(x) = f(x,y(x)).
+
+	tstart : float
+			The initial time given in the Cauchy-problem.
 	
-	initialValues: numpy.ndarray
-			The initial values provided by the Cauchy-problem. 
+	initial_value: numpy.ndarray
+			The initial value provided by the Cauchy-problem. 
 
 	Example:
 	-------
@@ -102,7 +105,22 @@ class ODEIntegrator(object):
 	   0.32139002  0.09905591]]
 	"""
 	def __init__(self, function, tstart, initial_value):
-		"""Initializer of an instance of the class ODEIntegrator."""
+		"""
+		Initializer of an instance of the class ODEIntegrator.
+		
+		Does some basic testing on the input provided by the user.
+
+		Parameters:
+		----------
+		function : FunctionType
+				Right-hand side of the ODE.
+
+		tstart : float
+				Initial time provided by the Cauchy-problem.
+
+		initial_value : array_like
+				Initial value provided by the Cauchy-problem.
+		"""
 		if isinstance(function, FunctionType):
 			self.function = function
 		else:
@@ -113,14 +131,45 @@ class ODEIntegrator(object):
 			self.tstart = float(tstart)
 		except Exception as e:
 			raise ValueError, str(e) + '. Starting time has to be a' \
-					' float or at least convertible to one.'
+					' float.'
 
 		if isinstance(initial_value, ndarray):
-			self.initial_value = initial_value
+			if initial_value.ndim > 1 or initial_value.size == 0:
+				raise ValueError, 'Initial value has to be a non-' \
+						' empty vector not a tensor. ndim = %s'%initial_value.ndim
+			else:
+				self.initial_value = initial_value
 		else:
-			raise ValueError, 'Expected an object of type numpy ' \
+			raise ValueError, 'Initial value has to be a numpy' \
 					' ndarray got %s instead.'%type(initial_value)
-				
+
+		#Check if function and initial value matches
+		val = function(tstart, initial_value)
+		
+		if isinstance(val, ndarray):
+			if val.shape != initial_value.shape:
+				raise ValueError, 'Function has to be vector-' \
+						' valued with same number of entries as' \
+						' the initial value.'
+		else:
+			raise ValueError, 'The value of the function has to' \
+					' be of type numpy ndarray.'
+		
+		#Default settings
+		self.settings = {
+				'method':str('EERK45'),
+				'steps':int(),
+				'params':(),
+				'verbose':False,
+				'flag':False,
+				'return_steps':False,
+				'abstol':tile(array([1e-6]), self.initial_value.size),
+				'reltol':tile(array([1e-6]), self.initial_value.size),
+				'h_min':finfo(float).eps,
+				'h_max':float(),
+				'max_steps':int(1e+4)
+			}
+
 		return None	
 
 	def _get_rk_tableaux(self, method):
@@ -156,14 +205,16 @@ class ODEIntegrator(object):
         ERK3/8 4     3/8-rule					   [Hai00]_, page 138 
         BE     1     Backward Euler				   [Hai00]_, page 205
         IM     2     Implicit Midpoint rule		   [Hai00]_, page 205 
-        IT     2     Implicit trapezoidal		   
+        IT     2     Implicit trapezoidal		   Wikipedia* 
         GL4    4     Gauss-Legendre				   [Ise96]_, page 47
         GL6    6     Gauss-Legendre				   [Ise96]_, page 47
 		KB8    8     Kuntzmann & Butcher           [Hai00]_, page 209
-		EERK12 2(1)  Heun-Euler
+		EERK12 2(1)  Heun-Euler					   Wikipedia*
         EERK23 3(2)  Simple embedded RK pair	   [Ise96]_, page 84
 		EERK45 5(4)  Fehlberg                      [Ise96]_, page 84
         ====== ===== ============================= ==================
+
+		* List of Runge-Kutta methods.
 
 		References:
 		----------
@@ -349,6 +400,7 @@ class ODEIntegrator(object):
 	def change_function(self, function):
 		"""Changes the attribute function of strategy and context."""
 		self.function = function
+		
 		try:
 			self.runge_kutta.function = function
 		except AttributeError:
@@ -356,9 +408,21 @@ class ODEIntegrator(object):
 
 		return None
 
-	def change_initial_values(self, initialValues):
-		"""Changes the attribute initialValues of strategy and context."""
+	def change_initial_time(self, tstart):
+		"""Changes the attribute tstart of context."""
+		ODEIntegrator.__init__(
+				self, 
+				self.function, 
+				tstart, 
+				self.initial_value
+			)
+		
+		return None
+
+	def change_initial_value(self, initial_value):
+		"""Changes the attribute initial_value of strategy and context."""
 		self.initial_value = initial_value
+		
 		try:
 			self.runge_kutta.initial_value = initial_value
 		except AttributeError:
@@ -367,101 +431,142 @@ class ODEIntegrator(object):
 		return None
 
 	def _build(self, method):
-		"""
-		
-		"""
+		"""Calls __init__ of RungeKutta and generates attribute."""
 		rk_matrix, rk_weights = self._get_rk_tableaux(method)
+		
+		#Generating of new attribute
 		self.runge_kutta = self._get_method(method)(
 				rk_matrix, 
 				rk_weights, 
 				self.function, 
-				self.initial_value
+				self.initial_value,
+				self.settings
 			)
 
 		print 'Runge-Kutta method %s successfully built.'%method
 
 		return None
 
-	def _process_kwargs(self, tend, **kwargs):
-		settings = {
-				'method':'EERK45',
-				'steps':None,
-				'params':(),
-				'verbose':False,
-				'flag':False,
-				'return_steps':False,
-				'abstol':tile(array([1e-6]), self.initial_value.size),
-				'reltol':tile(array([1e-6]), self.initial_value.size),
-				'h_min':finfo(float).eps,
-				'h_max':float(tend - self.tstart),
-				'max_steps':1e+4
-			}
-		
-		if kwargs:
-			for key in kwargs:
-				if key not in settings:
-					raise ValueError, 'Not supported keyword-argument' \
-							' %s provided.'%(key)
-
-			if 'method' in kwargs and kwargs['method'] != 'EERK45':
-				if 'steps' not in kwargs:
-					raise ValueError, 'RK method %s is non-adaptive and' \
-							' therefore requires the parameter steps for' \
-							' the number of steps.'%kwargs['method']
+	def _process_kwargs(self, kwdict):
+		"""Evaluates and saves optional settings provided by the user."""
+		for key in kwdict:
+			if key in self.settings:
+				if type(kwdict[key]) != type(self.settings[key]):
+					raise ValueError, 'Parameter %s in settings has to be ' \
+							' of type %s. Got %s instead'%(
+									key, 
+									type(self.settings[key]),
+									type(kwdict[key])
+								)
 				else:
-					for key in kwargs:
-						settings[key] = kwargs[key]
+					self.settings[key] = kwdict[key]
 			else:
-				if 'steps' in kwargs:
-					raise ValueError, 'RK method EERK45 is adaptive and' \
-							' does therefore not require any number of' \
-							' steps as parameter.'
-				else:
-					for key in kwargs:
-						settings[key] = kwargs[key]
-			
-		self._build(settings['method'])
+				raise ValueError, 'Not supported keyword argument %s ' \
+						' provided.'%key 
+		
+		#If method is non-adaptive it is mandatory to have non-zero steps 
+		if not (self.settings['steps'] == int()):
+			if not (self._get_method(self.settings['method']) == EmbeddedRungeKutta):
+				raise ValueError, 'The keyword argument steps has to be different' \
+						' from zero for the non-adaptive method %s.'%self.settings['method']
 
-		return settings
+		return None
 	
 	def integrate(self, tend, **kwargs):
 		"""
+		Integrates a given initial value problem for a given endpoint.
 
+		Parameters:
+		----------
+		tend : float
+				Endpoint of integration.
+
+		method : string, optional
+				Method described in the docstring of _get_rk_tableaux.
+
+		steps : int, semioptional
+				If method is changed from default steps indicates how many
+				steps are taken for integration.
+
+		params : tuple, optional
+				Additional arguments of the function passed in *args.
+
+		verbose : bool, optional
+				If True statistics about integration are printed on console.
+
+		flag : bool, optional
+				If True the integrator only returns the value at tend.
+
+		return_steps : bool, optional
+				If True returns the stepsize for non-addaptive method or
+				an array of the steps for an adapive method.
+
+		abstol : array_like, optional
+				Array of the absolute tolerance for adaptive method.
+
+		reltol : arra_like, optional
+				Array of the relative tolerance for adaptive method.
+
+		h_min : float, optional
+				Minimal stepsize for adaptive mezthod.
+
+		h_max : float, optional
+				Maximal stepsize for adaptive method.
+
+		max_steps : int, optional
+				Maximal number of steps for adaptive method.
+
+		Returns:
+		-------
+		h : array_like/float
+				Array of steps for adaptive method float else.
+
+		t : array_like
+				Equidistant or non-equidistant [tstart, tend].
+
+		y : array_like
+				Solution of the initial value problem. This is a matrix
+				of shape initial_value.size x time.size.
 		"""
-		settings = self._process_kwargs(tend, **kwargs)
-	
 		try:
 			tend = float(tend)
 		except Exception as e:
-			raise ValueError, str(e) + '. End time must be a float or' \
-					' at least be convirtible to one.'
+			raise ValueError, str(e) + '. End time has to be a float.'
 		
 		#Switch tStart and tEnd in case of tEnd < tStart
 		if self.tstart > tend:
 			tmp = self.tstart
 			self.tstart = tend
 			tend = tmp
+		
 		elif self.tstart == tend:
 			raise ValueError, 'Initial time and end time have to be' \
 					' distinct.'
 		
-		#Starting time measurement of integration process
+		#Default setting
+		self._process_kwargs(kwargs)
+		self._build(self.settings['method'])
+		
+		if self.settings['h_max'] == float():
+			self.settings['h_max'] = float(tend - self.tstart)
+			
+		#Initialize time measurement of integration process
 		t0 = time()
-
+		
+		#Initialize integration in the corresponding class
 		h, t, y = self.runge_kutta.integrate(
 							self.tstart,
-							tend,
-							**settings
+							tend
 						)
 		
-		if settings['verbose']:
-			print 'Integration process took %f seconds.' %(time() - t0)
+		if self.settings['verbose']:
+			print 'Integration process took %f seconds.'%(time() - t0)
 		
-		if settings['flag']:
+		if self.settings['flag']:
 			return t[-1], y[:,-1]
-		elif settings['return_steps']:
+		elif self.settings['return_steps']:
 			return h, t, y
-		elif settings['return_steps'] and settings['flag']:
+		elif self.settings['return_steps'] and self.settings['flag']:
 			return h, t[-1], y[:,-1]
 		else:
 			return t, y

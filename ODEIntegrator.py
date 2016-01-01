@@ -142,18 +142,6 @@ class ODEIntegrator(object):
 		else:
 			raise ValueError, 'Initial value has to be a numpy' \
 					' ndarray got %s instead.'%type(initial_value)
-
-		#Check if function and initial value matches
-		val = function(tstart, initial_value)
-		
-		if isinstance(val, ndarray):
-			if val.shape != initial_value.shape:
-				raise ValueError, 'Function has to be vector-' \
-						' valued with same number of entries as' \
-						' the initial value.'
-		else:
-			raise ValueError, 'The value of the function has to' \
-					' be of type numpy ndarray.'
 		
 		#Default settings
 		self.settings = {
@@ -443,7 +431,8 @@ class ODEIntegrator(object):
 				self.settings
 			)
 
-		print 'Runge-Kutta method %s successfully built.'%method
+		if self.settings['verbose']:
+			print 'Runge-Kutta method %s successfully built.'%method
 
 		return None
 
@@ -549,6 +538,22 @@ class ODEIntegrator(object):
 		
 		if self.settings['h_max'] == float():
 			self.settings['h_max'] = float(tend - self.tstart)
+
+		#Check if function and initial value matches
+		val = self.function(
+				self.tstart, 
+				self.initial_value, 
+				*self.settings['params']
+			)
+		
+		if isinstance(val, ndarray):
+			if val.shape != self.initial_value.shape:
+				raise ValueError, 'Function has to be vector-' \
+						' valued with same number of entries as' \
+						' the initial value.'
+		else:
+			raise ValueError, 'The value of the function has to' \
+					' be of type numpy ndarray.'
 			
 		#Initialize time measurement of integration process
 		t0 = time()

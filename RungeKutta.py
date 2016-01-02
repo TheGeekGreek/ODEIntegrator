@@ -68,7 +68,7 @@ class RungeKutta(object):
 		y = zeros((self.initial_value.size, t.size))
 		y[:, 0] = self.initial_value
 
-		for k in range(int(self.settings['steps'])):
+		for k in range(self.settings['steps']):
 			increments = self._compute_increments(y[:,k], t[k], h, *self.settings['params'])
 			y[:, k + 1] = y[:,k] + h * dot(increments, self.rk_weights)
 

@@ -115,6 +115,8 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
         time = [t]
         time_increments = []
         rejected = 0
+        rejected_time = []
+        rejected_steps = []
         successfull = False
 
         #Main loop
@@ -178,6 +180,10 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
                 rejected += 1
                 h = h_new
                 facmax = 1.
+
+                if self.settings['return_rejected_steps']:
+                    rejected_time.append(t)
+                    rejected_steps.append(y0)
        
         if self.settings['verbose']:
             if successfull:
@@ -191,5 +197,17 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
             print 'Maximal stepsize achieved in integration: %s'%max(time_increments)
             print 'Minimal stepsize achieved in integration: %s'%min(time_increments)
             print 'Number of rejected steps: %d'%rejected
-                
-        return array(time_increments), array(time), array(y).T
+            
+            
+        if self.settings['return_rejected_steps']:
+            out = (
+                    array(time_increments), 
+                    array(rejected_times),
+                    array(rejected_steps).T 
+                    
+            )
+            
+            return out, array(time), array(y).T
+        
+        else:
+            return array(time_increments), array(time), array(y).T

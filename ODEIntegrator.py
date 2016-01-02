@@ -151,6 +151,7 @@ class ODEIntegrator(object):
 				'verbose':False,
 				'flag':False,
 				'return_steps':False,
+				'return_rejected_steps':False,
 				'abstol':tile(array([1e-6]), self.initial_value.size),
 				'reltol':tile(array([1e-6]), self.initial_value.size),
 				'h_min':finfo(float).eps,
@@ -489,6 +490,10 @@ class ODEIntegrator(object):
 		return_steps : bool, optional
 				If True returns the stepsize for non-addaptive method or
 				an array of the steps for an adapive method.
+		
+		return_rejected_steps : bool, optional
+				Returns the timestamps and values of the rejected steps
+				as an array.
 
 		abstol : array_like, optional
 				Array of the absolute tolerance for adaptive method.

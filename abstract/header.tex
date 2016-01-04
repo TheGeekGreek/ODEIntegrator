@@ -1,0 +1,129 @@
+%===========================================================================%
+%HEADER.tex using the amsbook class for Mathematical Book===================%
+%Compiled 1.9.2014 - Yannis Bähni, Schaffhauserstrasse 179, 8400 Winterthur=%
+%===========================================================================%
+
+%Page Setup
+\documentclass[10pt, a4paper ,headsepline, footsepline]{article}
+\usepackage[top=3cm, bottom=3cm, left = 3.75cm, right=3.75cm]{geometry}
+\usepackage{fancyhdr}
+\usepackage{footmisc}
+\renewcommand*{\thefootnote}{\fnsymbol{footnote}}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{\textsc{\rightmark}}
+\fancyhead[R]{\thepage}
+%Font
+%\usepackage{mathptmx}
+\usepackage{times}
+\usepackage[T1]{fontenc}
+%\usepackage{times}
+%\usepackage{mathptmx}
+%\usepackage{newtx}
+\usepackage{anyfontsize}
+%Graphics
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{afterpage}
+\usepackage{minted}
+%Frames
+\usepackage{mdframed}
+\makeatletter
+\ifcase \@ptsize \relax% 10pt
+  \newcommand{\miniscule}{\@setfontsize\miniscule{4}{5}}% \tiny: 5/6
+\fi
+\makeatother
+%Math-Setup
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathrsfs}
+\usepackage{amstext}  
+\usepackage{hhline}
+\usepackage{booktabs} 
+\usepackage{array}
+\usepackage{xfrac} 
+\DeclareMathSizes{10}{10}{7}{6}
+\makeatletter
+\renewcommand*\env@matrix[1][*\c@MaxMatrixCols c]{%
+  \hskip -\arraycolsep
+  \let\@ifnextchar\new@ifnextchar
+  \array{#1}}
+\makeatother
+%\everymath{\displaystyle}
+\newcommand{\Space}{\vspace{2mm}}
+%Enumerate
+\usepackage{enumitem} 
+\renewcommand{\labelitemi}{$\bullet$}
+\renewcommand{\labelitemii}{$\ast$}
+\renewcommand{\labelitemiii}{$\cdot$}
+\renewcommand{\labelitemiv}{$\circ$}
+\newcommand*\circled[1]{\tikz[baseline=(char.base)]{\node[shape=circle,draw,inner sep = 2pt](char){#1};}}
+%Colors
+\usepackage{color}
+%Theorems
+\usepackage{amsthm}
+\newtheoremstyle{indented}{3pt}{3pt}{\addtolength{\leftskip}{2.5em}}{}{\scshape\bfseries}{.}{.5em}{}
+\theoremstyle{indented}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{Proof}{Proof}[section]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{korollary}{Korollary}[section]
+\newtheorem{theorem}{Theorem}[section]
+%German non-ASCII-Characters
+\usepackage[utf8]{inputenc}
+%Graphics-Tool
+\usepackage{tikz}
+\usepackage{tikzscale}
+\usepackage{bbm}
+\usetikzlibrary{calc,fadings,decorations.pathreplacing}
+\usepackage{verbatim}
+\usepackage{amssymb}
+\usepackage{array}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\usetikzlibrary{arrows, matrix}
+%\usepackage{bera}
+%Listing-Setup
+\usepackage{relsize}
+\usepackage{listings} \lstset{numbers=left, numberstyle=\tiny, numbersep=5pt} 
+\usepackage{color}
+\definecolor{gray}{gray}{0.55}
+%Python Sourcecode Layout
+\lstset{language=Python,
+         basicstyle=\smaller,
+         basewidth=0.58em,
+         columns=fixed,
+         tabsize=2,
+         fontadjust=true,
+         frame=l,
+         xleftmargin=4.2pt,
+         numbers=left,
+         stepnumber=1,
+         breaklines=true,
+         breakindent=0pt,
+         prebreak=\mbox{\tiny$\\searrow$},
+         postbreak=\mbox{{\color{gray}$\\cdots$}},
+         %keywordstyle=\bfseries,
+         %keywords={and, as, assert, break, class, continue, def, del,
+         %          elif, else, except, exec, finally, for, from, global,
+         %          if, import, in, is, not, or, pass, print, raise,
+         %          return, try, while, with, yield, True, False, None},
+         numberstyle=\color{gray},
+         commentstyle=\color{gray},
+         stringstyle=\textit,
+         showstringspaces=false,
+         }
+%Titlepage Command
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+\setcounter{section}{-1}
+%Bibliographie
+\usepackage[backend=bibtex, style=alphabetic]{biblatex}
+%\usepackage[babel, german = swiss]{csquotes}
+\bibliography{Bibliography}
+%PDF-Linking
+\usepackage[bookmarksopen=true,bookmarksnumbered=true]{hyperref}
+%Index
+\usepackage{index}
+\usepackage{idxlayout}
+\makeindex

@@ -7,10 +7,13 @@ Yannis Baehni - yannis.baehni@uzh.ch
 at University of Zurich, Raemistrasse 71, 8006 Zurich.
 """
 from numpy.linalg import norm
-from numpy import finfo, reshape, sqrt, zeros_like, tile, dot
+from numpy import array, zeros, finfo, reshape, sqrt, zeros_like, tile, dot
 from warnings import warn
 
 from ExplicitRungeKutta import *
+from RungeKutta import *
+
+__all__ = ['EmbeddedRungeKutta']
 
 class EmbeddedRungeKutta(ExplicitRungeKutta):
     def __init__(

@@ -9,6 +9,8 @@ at University of Zurich, Raemistrasse 71, 8006 Zurich.
 from sys import stdout
 from numpy import dot, shape, sign, zeros, linspace, hstack, array
 
+__all__ = ['RungeKutta']
+
 class RungeKutta(object):
 	def __init__(
 			self, 

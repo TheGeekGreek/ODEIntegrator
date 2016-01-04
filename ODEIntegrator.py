@@ -21,7 +21,7 @@ from ImplicitRungeKutta import *
 from EmbeddedRungeKutta import *
 
 __all__ = ['ODEIntegrator']
-__version__ = '0.1'
+__version__ = '1.0.0'
 __docformat__ = 'restructuredtext en'
 
 ######################################################################
@@ -454,9 +454,9 @@ class ODEIntegrator(object):
 				raise ValueError, 'Not supported keyword argument %s ' \
 						' provided.'%key 
 		
-		#If method is non-adaptive it is mandatory to have non-zero steps 
+		#If method is non-adaptive it is mandatory to have non-zero step 
 		if not (self.settings['steps'] == int()):
-			if not (self._get_method(self.settings['method']) == EmbeddedRungeKutta):
+			if (self._get_method(self.settings['method']) == EmbeddedRungeKutta):
 				raise ValueError, 'The keyword argument steps has to be different' \
 						' from zero for the non-adaptive method %s.'%self.settings['method']
 

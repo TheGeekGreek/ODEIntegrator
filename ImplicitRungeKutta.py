@@ -7,9 +7,11 @@ Yannis Baehni - yannis.baehni@uzh.ch
 at University of Zurich, Raemistrasse 71, 8006 Zurich.
 """
 from scipy.optimize import newton_krylov
-from numpy import tile
+from numpy import zeros, dot, tile
 
 from RungeKutta import *
+
+__all__ = ['ImplicitRungeKutta']
 
 class ImplicitRungeKutta(RungeKutta):
 	def _compute_increments(self, y, t, h, *args):

@@ -1,0 +1,485 @@
+\input{header.tex}
+\usepackage{tikz-uml}
+\usemintedstyle{emacs}
+\newmintedfile[py]{python}{
+	linenos = true,
+	tabsize = 4,
+	funcnamehighlighting = true,
+	fontfamily = courier,
+	fontsize = \scriptsize
+}
+
+\title{\scshape\bfseries MAT101 Project E: A Class For Solving Systems Of First Order Explicit Nonstiff Ordinary Differential Equations Using Different Non-Adaptive And Adaptive Runge Kutta Methods And A Strategy Pattern} 
+
+\date{\today}
+
+\author{\scshape Yannis Bähni\footnote{\href{mailto:yannis.baehni@uzh.ch}{yannis.baehni@uzh.ch}}, Niklas Gassner\footnote{\href{mailto:niklas.gassner@uzh.ch}{niklas.gassner@uzh.ch}}, Miranda Hajdini \footnote{\href{mailto:miranda.hajdini@hotmail.com}{miranda.hajdini@hotmail.com}}\\ \scshape and Alain Schmid \footnote{\href{mailto:alainluca.schmid@uzh.ch}{alainluca.schmid@uzh.ch}}}
+
+\begin{document}
+\thispagestyle{plain}
+\addtocounter{section}{1}
+
+\maketitle
+
+\begin{abstract}
+In this project we will write a class for solving ordinary differential equations (ODEs). ODEs are a very important topic in science and many discoveries were made solving ODEs. However in general solving an ODE is much more complicated then proposing it. There are many examples where an ODE has not analytically calculateable solution. Thus one has to stikc to approximation and that is where numerics come into play. Our main focus will be on special one-step-methods: The Runge-Kutta methods. We will implement various such methods and in the end we will apply them to several examples from physics and mathematics. We will show the advantages and disadvantages of the various methods and conclude that the embedded Runge-Kutta method of order $5(4)$ by Fehlberg will be the best and fastest method for most of the occuring problems.
+\end{abstract}
+
+\tableofcontents
+
+\listoffigures
+
+\section{Explicit Ordinary Differential Equations}
+\subsection{Introduction}
+Heuristically speaking a \emph{differential equation} is an equation which involves the derivatives of a function as well as the function itself. We want to consider only \emph{ordinary} differential equations. This means that the function only depends on one variable. In physics this will mostly be the variable $t$ for time. Let us recall some basic definitions. If a function $f: E \subseteq \mathbb{R} \rightarrow \mathbb{R}$ is differentiable in each point of $E$ (we use here the definition given in \cite[186--187]{Analysis_I_ZORICH} where $x \in E$ has to be an accumulation point of $E$) one can define the function
+
+\begin{gather}
+	f': \begin{cases}
+		E \longrightarrow \mathbb{R}\\
+		x \longmapsto f'(x)
+	\end{cases}
+\end{gather}
+
+This function can be itself differentiable on $E$ and thus inductively define the \emph{$n$-th derivative of $f$} as 
+
+\begin{gather}
+	\boxed{f^{(n)}(x) := \left( f^{(n-1)} \right)'(x)}
+\end{gather}
+
+Further define for $n \in \mathbb{N}$
+
+\begin{gather}
+	C^n(E;\mathbb{R}) := \left\{ f: E \rightarrow \mathbb{R} \big\vert \forall n \in \mathbb{N}\left(f^{(n)} \text{ is continuous}\right)\right\}
+\end{gather}
+
+where $C(E;\mathbb{R})$ is the set of all real-valued continuous functions on $E$. With this notation established we give the general
+
+\begin{mdframed}
+	\begin{definition}
+		Let $n,k \in \mathbb{N}_{>0}$, $U \subseteq \mathbb{R} \times \mathbb{R}^{n} \times \mathbb{R}^k$ and $f \in C(U; \mathbb{R}^n)$. Then
+
+		\begin{gather}
+			\varphi^{(k)}(x) = f\left( x, \varphi(x), \varphi'(x), \hdots, \varphi^{(k-1)}(x) \right)
+		\end{gather}
+
+		is a \emph{$k$-th order explicit ordinary differential equation}. A \emph{solution} of the above equation on an interval $I \subseteq \mathbb{R}$ is a function $\varphi \in C^k(I;\mathbb{R}^n)$ such that 
+		
+		\begin{gather}
+			\left( x, \varphi(x), \varphi'(x), \hdots,\varphi^{(k)}(x) \right) \in U			
+		\end{gather}
+		
+		and for all $x \in I$ the above equation holds. For $(x_0, \varphi_0, \varphi_1,\hdots,\varphi_{k-1}) \in U$ 
+
+		\begin{gather}
+			\begin{cases}
+				\varphi^{(k)}(x) = f\left( x, \varphi(x), \varphi'(x), \hdots, \varphi^{(k-1)}(x) \right)\\
+				\forall j = 1,\hdots,k - 1\left(\varphi^{(j)}(x_0) = \varphi_j\right)
+			\end{cases}
+		\end{gather}
+
+		is called an \emph{initial value problem} or \emph{Cauchy problem}. A solution of the initial value problem is a solution of the $k$-th order differential equation which fullfills $\varphi^{(j)}(x_0) = \varphi_j$ for all $j = 1,\hdots,k-1$ and $x_0 \in I$.
+	\end{definition}
+\end{mdframed}
+
+Each $k$-th order explicite ordinary differential equation can be rewritten as a \emph{first order} equation. Define $\psi:= \left( \varphi(x), \varphi'(x), \hdots,\varphi^{(k-1)}(x) \right)$. This is a function with values in $\mathbb{R}^n \times \mathbb{R}^k$. Further
+
+\begin{gather}
+	\hat{f}(x, z_0, z_1,\hdots,z_{k-1}) := \left( z_1,z_2,\hdots,z_{k-1},f(x, z_1,z_2,\hdots,z_{k-1}) \right)
+\end{gather}
+
+for $(x,z_0,z_1,\hdots, z_{k-1}) \in U$. The new equation
+
+\begin{gather}
+	\boxed{\psi(x) = \hat{f}(x,\psi(x))}
+\end{gather}
+
+is a first order equation with the initial value problem 
+
+	\begin{gather*}
+		\psi(x_0) = \left( \varphi_0,\varphi_1,\hdots,\varphi_{k-1} \right) \in U
+	\end{gather*}
+
+In matrix formulation
+
+\begin{gather}
+	\begin{bmatrix}
+		z_0\\
+		z_1\\
+		\vdots\\
+		z_{k-2}\\
+		z_{k-1}
+	\end{bmatrix}^{'}
+	=
+	\begin{bmatrix}
+		z_1\\
+		z_2\\
+		\vdots\\
+		z_{k-1}\\
+		f(x,z_0,z_1,\hdots,z_{k-1})
+	\end{bmatrix}
+\end{gather}
+
+Therefore it is only necessary to develop a general theory for solving systems of first order differential equations numerically. Further there is a usefull \emph{existence} and \emph{uniqueness} property for solutions given in the
+
+\begin{mdframed}
+	\begin{theorem}(\emph{Picard-Lindelöf, global version})
+		Let $I = [a,b] \subseteq \mathbb{R}$ a non-empty compact interval of the real numbers, $x_0 \in I$, $f \in C(I \times \mathbb{R}^n;\mathbb{R}^n)$ a \emph{Lipschitz-continuous} function of the second variable. Hence there exists some $L > 0$ such that
+
+		\begin{gather*}
+			\left\| f(x, \varphi) - f(x,\hat{\varphi}(x))\right\| \leqslant L \left\| \varphi - \hat{\varphi} \right\|
+		\end{gather*}
+
+		for all $x \in I$, $\varphi, \hat{\varphi} \in \mathbb{R}^n$ and $\|\cdot\|$ a given \emph{vector-norm}. Then for each $\varphi_0 \in \mathbb{R}^n$ the initial-value problem
+
+		\begin{gather}
+			\begin{cases}
+				\varphi'(x) = f(x,\varphi(x))\\
+				\varphi(x_0) = \varphi_0
+			\end{cases}
+		\end{gather}
+
+		has a unique solution $\varphi \in C^1(I;\mathbb{R}^n)$.
+	\end{theorem}
+\end{mdframed}
+
+\begin{Proof}
+	The proof can be found here \footnote{\href{http://www.math.uzh.ch/index.php?file&key1=34194}{http://www.math.uzh.ch/index.php?file\&key1=34194} last accessed on \today}.
+\end{Proof}
+
+\section{Numerical Methods for Ordinary Differential Equations}
+\subsection{One-Step Methods}
+\subsubsection{Runge-Kutta Methods}
+
+Based on \emph{quadrature} we wish to approximate the solution of initial value problem
+
+\begin{gather}
+	\begin{cases}
+		\varphi'(x) = f\left( x,\varphi(x) \right)\\
+		\varphi(x_0) = \varphi_0
+	\end{cases}
+\end{gather}
+
+where $\varphi_0 \in \mathbb{R}$ for any $x \geqslant [x_0, x_{\mathrm{end}}]$ and $f \in C([x_0,x_{\mathrm{end}}] \times \mathbb{R}^n;\mathbb{R}^n)$ where $f$ is at least Lipschitz-continuous (in single cases we need that $f$ is real-analytic).\\
+Quadrature is the numerical approximation of an integral. Considering the definition of the integral as a \emph{Riemann-sum}
+
+\begin{gather}
+	\boxed{\int_a^b f(x) dx := \lim\limits_{\lambda(P) \rightarrow 0} \sum\limits_{k = 1}^n f(\xi_k) \left( x_{k} - x_{k-1} \right)}
+\end{gather}
+
+where $P$ is a \emph{subdivision} of the closed interval $[a,b] \subseteq \mathbb{R}$, $\lambda(P) := \max\limits_{k = 1,\hdots,n} \left( x_{k} - x_{k-1} \right)$ and $\xi_k \in [x_{k} - x_{k-1}]$ for all $k = 1,\hdots, n$. If $f \in C[a,b]$ then the limit on the right exists \cite[353]{Analysis_I_ZORICH}. Further, since the right-hand side is a limit and thus an infinitesimal process it cannot be realized exactly on a computer which is only a finite calculation device, a \emph{discretization} has to be made. This means that the series on the right will be approximated by a finite sum. The most general case of this sum in numerics is known as \emph{Gaussian quadrature}. We will only give a short overview of this topics since it would fill an entire book. Let $\omega$ be a \emph{weighting function} on $[a,b] \subseteq \mathbb{R}$. This means that
+
+\begin{gather*}
+	0 \leqslant \int_a^b \omega(\tau) d\tau < +\infty \qquad  \forall j \in \mathbb{N}_{>0}\left(\left\vert \int_a^b \tau ^j\omega(\tau) d\tau\right\vert < +\infty\right) 
+\end{gather*}
+
+The quadrature rule is given by
+
+\begin{gather}
+	\boxed{\int\limits_a^b \varphi(\tau)\omega(\tau) d\tau \approx \sum\limits_{j = 1}^\nu b_j \varphi(c_j)}
+\end{gather}
+
+where $b_1,\hdots,b_\nu \in \mathbb{R}$ are called the \emph{weights} and $c_1,\hdots,c_\nu \in \mathbb{R}$ are called the \emph{nodes}. If $\varphi \in C^p[a,b]$ and the quadrature rule is exact for any polynomial up to degree $p - 1$ then
+
+\begin{gather}
+	\left\vert \int\limits_{a}^b \varphi(\tau)\omega(\tau)d\tau - \sum\limits_{j = 1}^\nu b_j\varphi(c_j)\right\vert < c \max\limits_{a \leqslant \tau \leqslant b} \left\vert \varphi^{(p)}(\tau) \right\vert
+\end{gather} 
+
+We give the
+
+\begin{mdframed}
+	\begin{definition}
+		If any quadrature rule is exact for every polynomial $A \in \mathbb{R}_{p-1}[X]$ then the quadrature rule is said to be of \emph{order $p$}.
+	\end{definition}
+\end{mdframed}
+
+The weights and nodes can be choosen so that $p \geqslant \nu$ holds. See \cite[34--37]{Numerical_Analysis_ISERLES}. For a more detailed review of Gaussian quadrature consider \cite[187--196]{Numerische_Mathematik_1_HOPPE}.\\
+
+Since we assumed that each right-hand side $f$ of the differential equation provided by an inital-value problem is Lipschitz-continuous it holds that $f$ is Riemann integrable. Further if we have $x_0$ and some $x_0 < x_1 \leqslant x_{\mathrm{end}}$ with $h := x_1 - x_0$ the integral
+
+\begin{gather}
+	\boxed{\varphi(x_{1}) = \varphi(x_0) + \int_{x_0}^{x_1} f\left( \tau, \varphi(\tau) \right) d\tau = \varphi(x_0) + h \int_0^1 f\left( x_0 + h\tau', \varphi\left( x_0 + h\tau' \right) \right) d\tau'}
+\end{gather}
+
+by the substitution $\tau = x_0 + h\tau'$ exists and can be approximated by
+
+\begin{gather}
+	\boxed{\varphi(x_1) \approx \varphi(x_0) + h \sum\limits_{j = 1}^\nu b_jf\left(  x_0 + hc_j, \varphi\left( x_0 + hc_j \right)  \right)}
+\end{gather}
+
+Since the function $\varphi$ is an unknown of the equation we do not know $\varphi(x_0 + hc_j)$ for $j = 1,\hdots, \nu$. Thus further approximations are needed. The simplest way is given in the
+
+\begin{mdframed}
+	\begin{definition}
+		Let 
+		
+		\begin{gather*}
+			\begin{cases}
+				\varphi'(x) = f(x, \varphi(x))\\
+				\varphi(x_0) = \varphi_0
+			\end{cases}
+		\end{gather*}
+		
+		be a given Cauchy-problem where $x_0 \in I$ for $I = [a,b] \subseteq \mathbb{R}$ and $f$ is Lipschitz-continuous in the second variable. Further let $\nu \in \mathbb{N}_{>0}$, $b \in \mathbb{R}^\nu$, $A \in M_\nu(\mathbb{R})$ and 
+
+		\begin{gather}
+			c_i = \sum\limits_{j = 1}^\nu a_{ij} \qquad i = 1,\hdots, \nu
+		\end{gather}
+
+		The method
+
+		\begin{align}
+			k_i &= f\left( x_0 + c_ih, \varphi_0 + h \sum\limits_{j = 1}^\nu a_{ij}k_j \right) \qquad i = 1,\hdots,\nu\\
+			\varphi_1 &= \varphi_0 + h \sum\limits_{i = 1}^\nu b_i k_i
+		\end{align}
+
+		is called a \emph{$\nu$-stage Runge-Kutta method}. If $a_{ij} = 0$ for $i \leqslant j$ we speak of an \emph{explicit Runge-Kutta method (ERK)}. If $a_{ij} = 0$ for $i < j$ and $a_{ii} \neq 0$ for at least one $i$ we speak of a \emph{diagonal implicit Runge-Kutta method (DIRK)}. In any other case we speak of an \emph{implicit Runge-Kutta method (IRK)}.
+	\end{definition}
+\end{mdframed}
+
+After Butcher we summarize any Runge-Kutta method in a tableau
+
+\begin{gather}
+	\begin{tabular}{c|ccc}
+			$c_1$ & $a_{11}$ & $\hdots$ & $a_{1\nu}$\\
+			$\vdots$ & $\vdots$ & & $\vdots$\\
+			$c_\nu$ & $a_{\nu 1}$ & $\hdots$ & $a_{\nu \nu}$\\
+			\hline
+			& $b_1$ & $\hdots$ & $b_\nu$
+	\end{tabular}
+\end{gather}
+
+There is a strong connection of ERK methods and Taylor expansions. We give the 
+
+\begin{mdframed}
+	\begin{definition}
+		An explicit Runge-Kutta method has \emph{order p} if for sufficiently smooth initial value problems
+
+		\begin{gather}
+			\left\| \varphi(x_0 + h) - \varphi_1\right\| \leqslant K h^{p+1}
+		\end{gather} 
+
+		i.e. if the Taylor series for the exact solution $\varphi(x_0 + h)$ and for $\varphi_1$ coincide up to (and including) the term $h^p$.
+	\end{definition}
+\end{mdframed}
+
+\subsubsection{The Class \texttt{ODEIntegrator}}
+A large amount of the best known Runge-Kutta methods are implemented in this class. The overall structure can be found in the corresponding UML-diagram. First we want to create a new \emph{instance} of the class \texttt{ODEIntegrator} by
+
+\begin{minted}[	
+	linenos = true,
+	tabsize = 4,
+	funcnamehighlighting = true,
+	fontfamily = courier,
+	fontsize = \scriptsize]{python}
+	instance = ODEIntegrator(right_hand_side, tstart, phi0)
+\end{minted}
+
+Where \texttt{right\_hand\_side} corresponds to the right-hand side provided by the Cauchy-problem
+
+\begin{gather}
+	\begin{cases}
+		\varphi'(t) = f(t, \varphi(t))\\
+		\varphi(t_0) = \varphi_0
+	\end{cases}
+\end{gather}
+
+Further \texttt{tstart} and \texttt{phi0} correspond to $t_0$ and $\varphi_0$ respectively. The crucial point may be the implementation details of \texttt{right\_hand\_side}. The function must be given in the following way
+
+\begin{minted}[	
+	linenos = true,
+	tabsize = 4,
+	funcnamehighlighting = true,
+	fontfamily = courier,
+	fontsize = \scriptsize]{python}
+def right_hand_side(t, y, arg_1 = val_1, . . . , arg_n = val_n):
+	output = zeros_like(y)
+	. . .
+	return output
+\end{minted}
+
+where \texttt{y} has to be a one-dimensional \texttt{numpy.ndarray}. The integration is performed by the method \texttt{integrate} 
+
+\begin{minted}[	
+	linenos = true,
+	tabsize = 4,
+	funcnamehighlighting = true,
+	fontfamily = courier,
+	fontsize = \scriptsize]{python}
+t, y = instance.integrate(tend, arg_1 = val_1, . . ., arg_n = val_m)
+\end{minted}
+
+There are some options which are described in the corresponding docstring. By default the used method is the \emph{embedded Runge-Kutta method of order $5(4)$ by Fehlberg} \cite[177]{ODE_I_HAIRER} with the \emph{automatic step-size controller} proposed in \cite[167--168]{ODE_I_HAIRER} and \emph{starting step-size estimator} \cite[169]{ODE_I_HAIRER}.
+
+\begin{figure}[h!tb]
+	\centering
+	\begin{tikzpicture}
+	\umlclass[x=-0.5,y=8,fill = white]{ODEIntegrator}{function\\tstart\\initial\_value\\runge\_kutta\\settings}{\_\_init\_\_\\\_get\_method\\\_get\_rk\_tableau\\change\_function\\change\_initial\_time\\change\_initial\_value\\\_build\\\_process\_kwargs\\integrate} 
+	\umlclass[x=-0.5,y=0,fill = white]{RungeKutta}{rk\_matrix\\rk\_weights\\rk\_nodes\\function\\initial\_value\\settings}{\_\_init\_\_\\calculate\_rk\_nodes\\build\\integrate\\increment}
+	\umluniaggreg[geometry = --, weight = 0.3]{ODEIntegrator}{RungeKutta}
+	\umlclass[x=-4.5,y=3,fill = white]{ExplicitRungeKutta}{}{build\\integrate\\\_compute\_increments}
+	\umlinherit[geometry = -|-]{ExplicitRungeKutta}{RungeKutta}
+	\umlclass[x=4.5,y=-3,fill = white]{SemiImplicitRungeKutta}{}{build\\integrate\\\_compute\_increments}
+	\umlinherit[geometry = -|-]{SemiImplicitRungeKutta}{RungeKutta}
+	\umlclass[x=4.5,y=3,fill = white]{ImplicitRungeKutta}{}{build\\integrate\\\_compute\_increments}
+	\umlinherit[geometry = -|-]{ImplicitRungeKutta}{RungeKutta}
+	\umlclass[x=-4.5,y=-3,fill = white]{EmbeddedRungeKutta}{rk\_weights\_hat}{build\\integrate\\compute\_increments}
+	\umlinherit[geometry = -|]{EmbeddedRungeKutta}{ExplicitRungeKutta}
+	\end{tikzpicture}
+	\caption[UML-diagram context and strategy]{UML-diagram of the context class \texttt{ODEIntegrator} together with the strategy \texttt{RungeKutta}}.
+\end{figure}
+
+\section{First Use Case: The Lennard-Jones Potential}
+This use case will be a solution of the first exercise which can be found here \footnote{\href{http://www.sam.math.ethz.ch/~raoulb/teaching/NumPhys_FS15/Serie2/serie02.pdf}{http://www.sam.math.ethz.ch/~raoulb/teaching/NumPhys\_FS15/Serie2/serie02.pdf} Last access on $12/14/2015$ at $21:34$.}. According to the preamble of the exercise the trajectory of \emph{scattering} of particles at a \emph{Lennard-Jones potential} is described by 
+
+\begin{gather}
+	\boxed{\begin{pmatrix}
+		x''(t)\\
+		y''(t)
+	\end{pmatrix} = -\nabla \left( 4 \left( \frac{1}{\sqrt{x(t)^2 + y^2(t)}} \right)^{12} - 4\left( \frac{1}{\sqrt{x(t)^2 + y(t)^2}} \right)^6 \right) }
+\end{gather}
+
+Thus
+
+\begin{align*}
+	\begin{pmatrix}
+		x''(t)\\
+		y''(t)
+	\end{pmatrix} &= -4\nabla \left(\left( \frac{1}{\sqrt{x^2(t) + y^2(t)}} \right)^{12} - \left( \frac{1}{\sqrt{x^2(t) + y^2(t)}} \right)^6 \right)\\
+	&= -4 \begin{pmatrix}
+		\frac{\partial }{\partial x}\\
+		\frac{\partial }{\partial y}
+	\end{pmatrix}\left( \left( \frac{1}{\sqrt{x(t)^2 + y^2(t)}} \right)^{12} - \left( \frac{1}{\sqrt{x(t)^2 + y(t)^2}} \right)^6 \right)\\
+	&= \begin{pmatrix}
+		\frac{48x(t)}{\left( x^2(t) + y^2(t) \right)^7} - \frac{24x(t)}{\left( x^2(t) + y^2(t) \right)^4}\\
+		\frac{48y(t)}{\left( x^2(t) + y^2(t) \right)^7} - \frac{24y(t)}{\left( x^2(t) + y^2(t) \right)^4}	
+	\end{pmatrix}
+\end{align*}
+
+Reformulating in a system of first order ODEs yields
+
+\begin{gather}
+	\begin{bmatrix}
+		x(t)\\
+		y(t)\\
+		x'(t)\\
+		y'(t)
+	\end{bmatrix}^{'} 
+	= \begin{bmatrix}
+		x'(t)\\
+		y'(t)\\
+		\frac{48x(t)}{\left( x^2(t) + y^2(t) \right)^7} - \frac{24x(t)}{\left( x^2(t) + y^2(t) \right)^4}\\
+		\frac{48y(t)}{\left( x^2(t) + y^2(t) \right)^7} - \frac{24y(t)}{\left( x^2(t) + y^2(t) \right)^4}	
+	\end{bmatrix}
+\end{gather}
+
+\begin{figure}[h!tb]
+	\centering
+	\includegraphics[width = \textwidth]{Lennard_Jones_potential.pdf}
+	\caption[Integration Lennard-Jones potential]{On the left the trajectories for $t_0 := 0$, $t_{\mathrm{end}} := 15$ and $\varphi(t_0) := \left( -10, b , 1, 0 \right)$ for several $b \in [0.15,3]$ of the Lennard-Jones potential using \emph{Fehlberg} are shown. On the right the corresponding time steps are shown.}
+\end{figure}
+
+\section{Second Use Case: Galactic Orbit}
+According to \cite[28--29]{QMM_TAKHTAJAN} \emph{Hamilton's equation} are given by 
+
+\begin{gather}
+	\boxed{\dot{p}_i = -\frac{\partial H(p,q)}{\partial q_i} \qquad \dot{q}_i = \frac{\partial H(p,q)}{\partial p_i} \qquad k = 1,\hdots,n} 
+\end{gather}
+
+Where $q := (q^1(t),\hdots,q^n(t))$ denotes the \emph{position} and $p := (p_1(t), \hdots,p_n(t))$ denotes the \emph{momentum}. Consider the Hamiltonian proposed in \cite[320]{ODE_I_HAIRER}
+
+\begin{gather}
+	\boxed{H(p,q) = \frac{1}{2}\left( p_1^2 + p_2^2 + p_3^2 \right) + \Omega \left( p_1q_2 - p_2 q_1 \right) + A \log \left( C + \frac{q_1^2}{a^2} + \frac{q_2^2}{b^2} + \frac{q_3^2}{c^2} \right) }
+\end{gather}
+
+where $\Omega$ denotes the angular velocity. Thus
+
+\begin{align*}
+	\dot{p}_1 &= \Omega p_2 -  A \frac{\frac{2q_1}{a^2}}{C + \frac{q_1^2}{a^2} + \frac{q_2^2}{b^2} + \frac{q_3^2}{c^2}}\\
+	\dot{p}_2 &= - \left(\Omega p_1 + A \frac{\frac{2q_2}{b^2}}{C + \frac{q_1^2}{a^2} + \frac{q_2^2}{b^2} + \frac{q_3^2}{c^2}}\right)\\
+	\dot{p}_3 &= -A \frac{\frac{2q_3}{c^2}}{C + \frac{q_1^2}{a^2} + \frac{q_2^2}{b^2} + \frac{q_3^2}{c^2}}\\
+	\dot{q}_1 &= p_1 + \Omega q_2\\
+	\dot{q}_2 &= p_2 - \Omega q_1\\
+	\dot{q}_3 &= p_3
+\end{align*}
+
+We take the initial value problem described in the book. This yields
+
+\begin{gather}
+	H(p(0),q(0)) = \frac{1}{2}p_2^2 - \frac{5}{8} p_2 + \log 5 + \frac{1}{50}  
+\end{gather}
+
+Setting $H(p(0), q(0)) = 2$ and solving for $p_2$ yields
+
+\begin{gather}
+	p_2(0) = \frac{5}{8} \pm \sqrt{\frac{25}{64} - 2\left( \log 5 - \frac{99}{50}\right)} 
+\end{gather}
+
+We take the larger value for $p_2(0)$.
+
+\begin{figure}[h!tb]
+	\centering
+	\includegraphics[width = \textwidth]{Galactic_orbit.pdf}
+	\caption[Galactic orbit]{Galactic orbit of a star in a potential formed by finitely many other stars within the same galaxy. The integration was performed using the \emph{Fehlberg} method with $\mathrm{Atol} = \mathrm{Rtol} = 10^{-10}$, $t_0 = 0$ and $t_{\mathrm{end}} = 15000$.}
+\end{figure}
+
+\begin{figure}[h!tb]
+	\centering
+	\includegraphics[width = \textwidth]{Galactic_orbit_adaptive.pdf}
+	\caption[Galactic orbit adaptive]{Galactic orbit of a star in a potential formed by finitely many other stars within the same galaxy. The integration was performed using the \emph{Fehlberg} method with $\mathrm{Atol} = \mathrm{Rtol} = 10^{-10}$, $t_0 = 0$ and $t_{\mathrm{end}} = 1000$. Also the varying step-size is plotted.}
+\end{figure}
+
+\section{Third Use Case: The $N$-Body Problem}
+Consider the Hamiltonian \cite[10]{N_Body_MEYER}.
+
+\begin{gather}
+	\boxed{H(p,q) = \frac{1}{2}p^tM^{-1}p - G \sum\limits_{1 \leqslant i < j \leqslant N} \frac{m_i m_j}{\|q_j - q_i\|} = \sum\limits_{i = 1}^N \frac{\|p_i\|^2}{2m_i} - G \sum\limits_{1 \leqslant i < j \leqslant N} \frac{m_i m_j}{\|q_j - q_i\|}} 
+\end{gather}
+
+Thus we have
+
+\begin{gather}
+	\dot{q}_i = \frac{p_i}{m_i} \qquad \dot{p}_i = \sum\limits_{\substack{j = 1\\j \neq i}}^N \frac{m_im_j(q_j - q_i)}{\|q_i - q_j\|^3} \qquad i = 1,\hdots,N
+\end{gather}
+
+\begin{figure}[h!tb]
+	\centering
+	\includegraphics[width = \textwidth]{N_body_problem_trajectories.pdf}
+	\caption[$N$-body problem trajectories]{Trajectories of the solution of the $N$-body problem for $N = 6$, $t_0 = 0$, $t_{\mathrm{end}} = 1.5$ and a randomly generated initial value vector $\varphi_0 \in \mathbb{R}^{6N}$. Method used was Fehlberg.}
+\end{figure}
+
+\begin{figure}[h!tb]
+	\centering
+	\includegraphics[width = \textwidth]{N_body_problem_velocities.pdf}
+	\caption[$N$-body problem velocities]{Norm of velocity provided by the solution of above $N$-body problem.}
+\end{figure}
+
+\printbibliography
+
+\section{Listings}
+	\subsection{Context}
+		\subsubsection{\texttt{ODEIntegrator}}
+			\py{ODEIntegrator.py}
+	\subsection{Strategy}
+		\subsubsection{\texttt{RungeKutta}}
+			\py{RungeKutta.py}
+	\subsection{First Concrete Strategy}
+		\subsection{\texttt{ExplicitRungeKutta}}
+			\py{ExplicitRungeKutta.py}
+	\subsection{Second Concrete Strategy}
+		\subsection{\texttt{DiagonalImplicitRungeKutta}}
+			\py{DiagonalImplicitRungeKutta.py}
+	\subsection{Third Concrete Strategy}
+		\subsection{\texttt{ImplicitRungeKutta}}
+			\py{ImplicitRungeKutta.py}
+	\subsection{Fourth Concrete Strategy}
+		\subsection{\texttt{EmbeddedRungeKutta}}
+			\py{EmbeddedRungeKutta.py}
+	\subsection{First Use Case: Lennard-Jones Potential}
+		\py{Lennard_Jones.py}
+	\subsection{Second Use Case: Galactic Orbit}
+		\py{Galactic_orbit.py}
+	\subsection{Third Use Case: The $N$-Body Problem}
+		\py{N_body_problem.py}
+	\subsection{Fourth Use Case: Hohmann Transfer}
+		\py{Alain.py}
+\end{document}

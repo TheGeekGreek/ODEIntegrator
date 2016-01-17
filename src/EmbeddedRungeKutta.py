@@ -110,7 +110,7 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
         power = nu - 1
         y0 = self.initial_value
         fac = (.25)**(1./power)
-        facmax = 2.
+        facmax = 5.
         t = tstart
 
         #Outputsavings
@@ -118,7 +118,7 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
         time = [t]
         time_increments = []
         rejected = 0
-        rejected_time = []
+        rejected_times = []
         rejected_steps = []
         successfull = False
 
@@ -172,7 +172,7 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
                 
                 t += h
                 h = h_new
-                facmax = 2.
+                facmax = 5.
                 y.append(y0)
                 time.append(t)
                 
@@ -185,8 +185,8 @@ class EmbeddedRungeKutta(ExplicitRungeKutta):
                 facmax = 1.
 
                 if self.settings['return_rejected_steps']:
-                    rejected_time.append(t)
-                    rejected_steps.append(y0)
+                    rejected_times.append(t)
+                    rejected_steps.append(y_hat1)
        
         if self.settings['verbose']:
             if successfull:

@@ -28,6 +28,21 @@ __docformat__ = 'restructuredtext en'
 #User interface														 #
 ######################################################################
 
+default = {
+			'method':str('EERK45'),
+			'steps':int(),
+			'params':(),
+			'verbose':False,
+			'flag':False,
+			'return_steps':False,
+			'return_rejected_steps':False,
+			'abstol':array([], dtype = float),
+			'reltol':array([], dtype = float),
+			'h_min':finfo(float).eps,
+			'h_max':float(),
+			'max_steps':int(1e+4)
+}
+
 class ODEIntegrator(object):
 	"""
 	An interface for integrating systems of first order ODEs.
@@ -144,20 +159,7 @@ class ODEIntegrator(object):
 					' ndarray got %s instead.'%type(initial_value)
 		
 		#Default settings
-		self.settings = {
-				'method':str('EERK45'),
-				'steps':int(),
-				'params':(),
-				'verbose':False,
-				'flag':False,
-				'return_steps':False,
-				'return_rejected_steps':False,
-				'abstol':tile(array([1e-6]), self.initial_value.size),
-				'reltol':tile(array([1e-6]), self.initial_value.size),
-				'h_min':finfo(float).eps,
-				'h_max':float(),
-				'max_steps':int(1e+4)
-			}
+		self.settings = dict(default)
 
 		return None	
 
@@ -419,6 +421,20 @@ class ODEIntegrator(object):
 
 		return None
 
+	def reset_settings(self):
+		self.settings = dict(default)
+
+		return None
+
+	def print_settings(self):
+		"""Prints the current settings of the Integrator."""
+		print 'Settings:'
+		print '--------'
+		for key in self.settings:
+			print str(key) + ': ' + str(self.settings[key])
+
+		return None
+
 	def _build(self, method):
 		"""Calls __init__ of RungeKutta and generates attribute."""
 		rk_matrix, rk_weights = self._get_rk_tableaux(method)
@@ -559,6 +575,10 @@ class ODEIntegrator(object):
 		else:
 			raise ValueError, 'The value of the function has to' \
 					' be of type numpy ndarray.'
+
+		#Default tolerances
+		self.settings['abstol'] = tile(array([1e-6]), self.initial_value.size)
+		self.settings['reltol'] = tile(array([1e-6]), self.initial_value.size) 
 			
 		#Initialize time measurement of integration process
 		t0 = time()
